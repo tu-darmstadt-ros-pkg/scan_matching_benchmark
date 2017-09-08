@@ -1,4 +1,4 @@
-#include "include/scan_matching_benchmark/scan_matching_benchmark.h"
+#include "scan_matching_benchmark.h"
 
 #include <cartographer/mapping_3d/scan_matching/ceres_voxblox_tsdf_scan_matcher.h>
 #include <voxblox/core/common.h>

@@ -26,7 +26,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#include "include/scan_matching_benchmark/scan_matching_benchmark.h"
+#include "scan_matching_benchmark/scan_matching_benchmark.h"
 
 #include <ros/ros.h>
 
