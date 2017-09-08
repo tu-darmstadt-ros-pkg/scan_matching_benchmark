@@ -32,7 +32,7 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 
    }
 
-   tsdf_integrator_->integratePointCloud(T_G_C, points_C, colors);
+   tsdf_integrator->integratePointCloud(T_G_C, points_C, colors);
 
   cartographer::mapping_3d::scan_matching::proto::CeresScanMatcherOptions options;
   cartographer::mapping_3d::scan_matching::CeresVoxbloxTSDFScanMatcher voxblox_scan_matcher(options);

@@ -27,7 +27,7 @@ set(PACKAGE_DEPENDENCIES
 find_package(cartographer REQUIRED)
 include("${CARTOGRAPHER_CMAKE_DIR}/functions.cmake")
 google_initialize_cartographer_project()
-google_enable_testing()
+#google_enable_testing()
 
 find_package(catkin REQUIRED COMPONENTS ${PACKAGE_DEPENDENCIES})
 
