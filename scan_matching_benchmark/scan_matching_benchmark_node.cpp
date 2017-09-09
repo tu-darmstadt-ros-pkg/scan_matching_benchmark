@@ -28,6 +28,7 @@
 
 #include "scan_matching_benchmark/scan_matching_benchmark.h"
 
+#include <glog/logging.h>
 #include <ros/ros.h>
 
 int main(int argc, char **argv) {

@@ -35,17 +35,15 @@ catkin_package(
   DEPENDS
     PCL
     EIGEN3
-  INCLUDE_DIRS "include/scan_matching_benchmark/"
+  INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
 
 file(GLOB_RECURSE ALL_SRCS "*.cpp" "*.h")
-#file(GLOB_RECURSE ALL_TESTS "*_test.cc")
 file(GLOB_RECURSE ALL_EXECUTABLES "*_node.cpp")
-#list(REMOVE_ITEM ALL_SRCS ${ALL_TESTS})
-#list(REMOVE_ITEM ALL_SRCS ${ALL_EXECUTABLES})
-add_library(${PROJECT_NAME} scan_matching_benchmark/scan_matching_benchmark.cpp)
-add_subdirectory("scan_matching_benchmark")
+list(REMOVE_ITEM ALL_SRCS ${ALL_EXECUTABLES})
+add_library(${PROJECT_NAME} ${ALL_SRCS})
+
 
 target_link_libraries(${PROJECT_NAME} PUBLIC cartographer)
 

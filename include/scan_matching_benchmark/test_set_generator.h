@@ -26,30 +26,25 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef SCAN_MATCHING_BENCHMARK_H_
-#define SCAN_MATCHING_BENCHMARK_H_
+#ifndef TEST_SET_GENERATOR_H_
+#define TEST_SET_GENERATOR_H_
 
-#include <cartographer/mapping_3d/scan_matching/proto/ceres_scan_matcher_options.pb.h>
 #include <cartographer/sensor/point_cloud.h>
-#include <ros/ros.h>
 
-
-
-class ScanMatchingBenchmark
+class TestSetGenerator
 {
 public:
-  ScanMatchingBenchmark(ros::NodeHandle &nh);
+  TestSetGenerator();
+  TestSetGenerator(float resolution, float size);
+
+  void generateCube(cartographer::sensor::PointCloud& cloud);
+
+  float resolution_;
+  float size_;
 
 private:
-
-  void evaluateVoxbloxTSDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
-                           const cartographer::transform::Rigid3d& initial_pose_estimate,
-                           cartographer::transform::Rigid3d& matched_pose_estimate,
-                           ceres::Solver::Summary& summary);
-
-  cartographer::mapping_3d::scan_matching::proto::CeresScanMatcherOptions ceres_scan_matcher_options_;
 
 
 };
 
-#endif //SCAN_MATCHING_BENCHMARK_H_
+#endif //TEST_SET_GENERATOR_H_
