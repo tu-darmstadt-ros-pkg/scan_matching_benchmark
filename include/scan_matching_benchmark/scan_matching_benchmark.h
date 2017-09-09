@@ -32,6 +32,7 @@
 #include <cartographer/mapping_3d/scan_matching/proto/ceres_scan_matcher_options.pb.h>
 #include <cartographer/sensor/point_cloud.h>
 #include <ros/ros.h>
+#include <voxblox/core/tsdf_map.h>
 
 
 
@@ -47,7 +48,15 @@ private:
                            cartographer::transform::Rigid3d& matched_pose_estimate,
                            ceres::Solver::Summary& summary);
 
+  void evaluateProbabilityGridScanMatcher(const cartographer::sensor::PointCloud& cloud,
+                           const cartographer::transform::Rigid3d& initial_pose_estimate,
+                           cartographer::transform::Rigid3d& matched_pose_estimate,
+                           ceres::Solver::Summary& summary);
+
   cartographer::mapping_3d::scan_matching::proto::CeresScanMatcherOptions ceres_scan_matcher_options_;
+
+
+  std::shared_ptr<voxblox::TsdfMap> voxblox_tsdf_;
 
 
 };
