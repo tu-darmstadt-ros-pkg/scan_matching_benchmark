@@ -4,11 +4,15 @@ project(scan_matching_benchmark)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
+## We need fPIC option to link against Cartographer
 add_compile_options(-fPIC)
 
 
 set(PACKAGE_DEPENDENCIES
   eigen_conversions
+  geometry_msgs
+  sensor_msgs
+  std_msgs
   pcl_conversions
   roscpp
   roslib

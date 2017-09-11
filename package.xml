@@ -42,6 +42,9 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>cartographer</depend>
   <depend>eigen_conversions</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>libpcl-all-dev</depend>
   <depend>pcl_conversions</depend>
   <depend>roscpp</depend>

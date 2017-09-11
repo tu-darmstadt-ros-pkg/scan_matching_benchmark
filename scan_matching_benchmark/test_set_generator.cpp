@@ -10,9 +10,8 @@ TestSetGenerator::TestSetGenerator(float resolution, float size):
 
 void TestSetGenerator::generateCube(cartographer::sensor::PointCloud& cloud) {
   cloud.clear();
-  float num_points_per_side = size_ / resolution_;
   float min_xyz = -size_ / 2.0;
-  float max_xyz = -size_ / 2.0;
+  float max_xyz = size_ / 2.0;
 
   for(float x = min_xyz; x <= max_xyz; x += resolution_) {
     for(float y = min_xyz; y <= max_xyz; y += resolution_) {

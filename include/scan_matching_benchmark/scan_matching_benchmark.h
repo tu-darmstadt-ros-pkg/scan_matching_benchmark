@@ -31,6 +31,7 @@
 
 #include <cartographer/mapping_3d/scan_matching/proto/ceres_scan_matcher_options.pb.h>
 #include <cartographer/sensor/point_cloud.h>
+#include <pcl/common/common.h>
 #include <ros/ros.h>
 #include <voxblox/core/tsdf_map.h>
 
@@ -44,14 +45,18 @@ public:
 private:
 
   void evaluateVoxbloxTSDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
-                           const cartographer::transform::Rigid3d& initial_pose_estimate,
-                           cartographer::transform::Rigid3d& matched_pose_estimate,
-                           ceres::Solver::Summary& summary);
+                                      const cartographer::transform::Rigid3d& initial_pose_estimate,
+                                      cartographer::transform::Rigid3d& matched_pose_estimate,
+                                      pcl::PointCloud<pcl::PointXYZI>& voxblox_tsdf_cloud,
+                                      pcl::PointCloud<pcl::PointXYZI>& interpolated_voxblox_tsdf_cloud,
+                                      ceres::Solver::Summary& summary);
 
   void evaluateProbabilityGridScanMatcher(const cartographer::sensor::PointCloud& cloud,
-                           const cartographer::transform::Rigid3d& initial_pose_estimate,
-                           cartographer::transform::Rigid3d& matched_pose_estimate,
-                           ceres::Solver::Summary& summary);
+                                          const cartographer::transform::Rigid3d& initial_pose_estimate,
+                                          cartographer::transform::Rigid3d& matched_pose_estimate,
+                                          pcl::PointCloud<pcl::PointXYZI>& probability_grid,
+                                          pcl::PointCloud<pcl::PointXYZI>& interpolated_probability_grid_cloud,
+                                          ceres::Solver::Summary& summary);
 
   cartographer::mapping_3d::scan_matching::proto::CeresScanMatcherOptions ceres_scan_matcher_options_;
 
