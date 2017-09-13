@@ -58,6 +58,13 @@ private:
                                       pcl::PointCloud<pcl::PointXYZI>& interpolated_voxblox_tsdf_cloud,
                                       ceres::Solver::Summary& summary);
 
+  void evaluateVoxbloxESDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
+                                      const cartographer::transform::Rigid3d& initial_pose_estimate,
+                                      cartographer::transform::Rigid3d& matched_pose_estimate,
+                                      pcl::PointCloud<pcl::PointXYZI>& voxblox_esdf_cloud,
+                                      pcl::PointCloud<pcl::PointXYZI>& interpolated_voxblox_esdf_cloud,
+                                      ceres::Solver::Summary& summary);
+
   void evaluateProbabilityGridScanMatcher(const cartographer::sensor::PointCloud& cloud,
                                           const cartographer::transform::Rigid3d& initial_pose_estimate,
                                           cartographer::transform::Rigid3d& matched_pose_estimate,

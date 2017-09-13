@@ -35,12 +35,12 @@ class TestSetGenerator
 {
 public:
   TestSetGenerator();
-  TestSetGenerator(float resolution, float size);
+  TestSetGenerator(float resolution);
 
-  void generateCube(cartographer::sensor::PointCloud& cloud);
+  void generateCube(cartographer::sensor::PointCloud& cloud, float size);
+  void generateCuboid(cartographer::sensor::PointCloud& cloud, float size_x, float size_y, float size_z);
 
   float resolution_;
-  float size_;
 
 private:
 

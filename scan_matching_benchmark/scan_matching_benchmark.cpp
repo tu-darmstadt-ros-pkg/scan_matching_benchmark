@@ -4,12 +4,14 @@
 
 #include <cartographer/mapping_3d/scan_matching/ceres_scan_matcher.h>
 #include <cartographer/mapping_3d/scan_matching/ceres_voxblox_tsdf_scan_matcher.h>
+#include <cartographer/mapping_3d/scan_matching/ceres_voxblox_esdf_scan_matcher.h>
 #include <cartographer/mapping_3d/scan_matching/ceres_tsdf_scan_matcher.h>
 #include <cartographer/mapping_3d/range_data_inserter.h>
 #include <cartographer/mapping_3d/proto/range_data_inserter_options.pb.h>
 #include <cartographer/mapping_3d/scan_matching/interpolated_voxblox_tsdf.h>
 #include <cartographer/mapping_3d/scan_matching/interpolated_tsdf.h>
 #include <cartographer/mapping_3d/scan_matching/interpolated_grid.h>
+#include <cartographer/mapping_3d/scan_matching/interpolated_voxblox_esdf.h>
 #include <open_chisel/ChunkManager.h>
 #include <open_chisel/truncation/ConstantTruncator.h>
 #include <open_chisel/weighting/ConstantWeighter.h>
@@ -21,6 +23,7 @@
 #include <pcl/filters/passthrough.h>
 #include <voxblox/core/common.h>
 #include <voxblox/integrator/tsdf_integrator.h>
+#include <voxblox/integrator/esdf_integrator.h>
 #include <voxblox_ros/ptcloud_vis.h>
 #include <voxblox/interpolator/interpolator.h>
 
@@ -32,8 +35,8 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  TestSetGenerator generator(0.01, 2.025);
-  generator.generateCube(pointcloud);
+  TestSetGenerator generator(0.021);
+  generator.generateCuboid(pointcloud, 2.025, 12.025, 2.025);
 
 
   ceres_scan_matcher_options_.set_translation_weight(0.0000001);
@@ -51,6 +54,8 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   ros::Publisher hybrid_grid_interpolated_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("hybrid_grid_interpolated_pointcloud", 1, true);
   ros::Publisher voxblox_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("voxblox_tsdf_pointcloud", 1, true);
   ros::Publisher voxblox_interpolated_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("voxblox_interpolated_tsdf_pointcloud", 1, true);
+  ros::Publisher voxblox_esdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("voxblox_esdf_pointcloud", 1, true);
+  ros::Publisher voxblox_interpolated_esdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("voxblox_interpolated_esdf_pointcloud", 1, true);
   ros::Publisher chisel_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("chisel_tsdf_pointcloud", 1, true);
   ros::Publisher chisel_interpolated_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("chisel_interpolated_tsdf_pointcloud", 1, true);
 
@@ -60,6 +65,8 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 
   pcl::PointCloud<pcl::PointXYZI> hybrid_grid_cloud;
   pcl::PointCloud<pcl::PointXYZI> hybrid_grid_interpolated_cloud;
+  pcl::PointCloud<pcl::PointXYZI> voxblox_esdf_cloud;
+  pcl::PointCloud<pcl::PointXYZI> voxblox_interpolated_esdf_cloud;
   pcl::PointCloud<pcl::PointXYZI> voxblox_tsdf_cloud;
   pcl::PointCloud<pcl::PointXYZI> voxblox_interpolated_tsdf_cloud;
   pcl::PointCloud<pcl::PointXYZI> chisel_tsdf_cloud;
@@ -88,11 +95,18 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
 
+  std::cout << "VOXBLOX_ESDF\n";
+  evaluateVoxbloxESDFScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, voxblox_esdf_cloud, voxblox_interpolated_esdf_cloud, summary);
+  std::cout<<"Before "<<initial_pose_estimate<<std::endl;
+  std::cout<<"After "<<matched_pose_estimate<<std::endl;
+  std::cout<<summary.BriefReport()<<std::endl;
+
   std::cout << "VOXBLOX_TSDF\n";
   evaluateVoxbloxTSDFScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, voxblox_tsdf_cloud, voxblox_interpolated_tsdf_cloud, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
+
   std::cout << "CHISEL_TSDF\n";
   evaluateChiselTSDFScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, chisel_tsdf_cloud, chisel_interpolated_tsdf_cloud, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
@@ -132,6 +146,18 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   voxblox_interpolated_tsdf_cloud_msg.header.stamp = ros::Time::now();
   voxblox_interpolated_tsdf_cloud_msg.header.frame_id = "world";
   voxblox_interpolated_tsdf_pointcloud_publisher.publish(voxblox_interpolated_tsdf_cloud_msg);
+
+  sensor_msgs::PointCloud2 voxblox_esdf_cloud_msg;
+  pcl::toROSMsg(voxblox_esdf_cloud, voxblox_esdf_cloud_msg);
+  voxblox_esdf_cloud_msg.header.stamp = ros::Time::now();
+  voxblox_esdf_cloud_msg.header.frame_id = "world";
+  voxblox_esdf_pointcloud_publisher.publish(voxblox_esdf_cloud_msg);
+
+  sensor_msgs::PointCloud2 voxblox_interpolated_esdf_cloud_msg;
+  pcl::toROSMsg(voxblox_interpolated_esdf_cloud, voxblox_interpolated_esdf_cloud_msg);
+  voxblox_interpolated_esdf_cloud_msg.header.stamp = ros::Time::now();
+  voxblox_interpolated_esdf_cloud_msg.header.frame_id = "world";
+  voxblox_interpolated_esdf_pointcloud_publisher.publish(voxblox_interpolated_esdf_cloud_msg);
 
   sensor_msgs::PointCloud2 chisel_tsdf_cloud_msg;
   pcl::toROSMsg(chisel_tsdf_cloud, chisel_tsdf_cloud_msg);
@@ -207,10 +233,10 @@ void ScanMatchingBenchmark::evaluateChiselTSDFScanMatcher(const cartographer::se
 
   cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, 0.12);
   double min_x = -1.2;
-  double min_y = -1.2;
+  double min_y = -51.2;
   double min_z = 0.001;
   double max_x = 1.2;
-  double max_y = 1.2;
+  double max_y = 51.2;
   double max_z = 0.001;
   for(double x = min_x; x <= max_x; x += 0.01) {
     for(double y = min_y; y <= max_y; y += 0.01) {
@@ -228,10 +254,10 @@ void ScanMatchingBenchmark::evaluateChiselTSDFScanMatcher(const cartographer::se
   }
 
    min_x = -1.2;
-   min_y = -1.2;
+   min_y = -6.2;
    min_z = 0.000;
    max_x = 1.2;
-   max_y = 1.2;
+   max_y = 6.2;
    max_z = 0.001;
   for(double x = min_x; x <= max_x; x += 0.05) {
     for(double y = min_y; y <= max_y; y += 0.05) {
@@ -292,8 +318,8 @@ void ScanMatchingBenchmark::evaluateVoxbloxTSDFScanMatcher(const cartographer::s
 
   voxblox::TsdfIntegratorBase::Config integrator_config;
   integrator_config.voxel_carving_enabled = true;
-  integrator_config.default_truncation_distance = 0.1;
-  integrator_config.max_ray_length_m = 30.0;
+  integrator_config.default_truncation_distance = 0.5;
+  integrator_config.max_ray_length_m = 120.0;
 
   std::shared_ptr<voxblox::TsdfIntegratorBase> tsdf_integrator;
   tsdf_integrator.reset(new voxblox::SimpleTsdfIntegrator(
@@ -330,10 +356,10 @@ void ScanMatchingBenchmark::evaluateVoxbloxTSDFScanMatcher(const cartographer::s
 
   cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxTSDF interpolated_voxblox_tsdf(voxblox_tsdf_, max_truncation_distance);
   double min_x = -1.2;
-  double min_y = -1.2;
+  double min_y = -51.2;
   double min_z = 0.001;
   double max_x = 1.2;
-  double max_y = 1.2;
+  double max_y = 51.2;
   double max_z = 0.001;
   for(double x = min_x; x <= max_x; x += 0.01) {
     for(double y = min_y; y <= max_y; y += 0.01) {
@@ -349,6 +375,121 @@ void ScanMatchingBenchmark::evaluateVoxbloxTSDFScanMatcher(const cartographer::s
         p.z = z;
         p.intensity = std::abs(q);
         interpolated_voxblox_tsdf_cloud.push_back(p);
+      }
+    }
+  }
+}
+
+
+void ScanMatchingBenchmark::evaluateVoxbloxESDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
+                                                           const cartographer::transform::Rigid3d& initial_pose_estimate,
+                                                           cartographer::transform::Rigid3d& matched_pose_estimate,
+                                                           pcl::PointCloud<pcl::PointXYZI>& voxblox_esdf_cloud,
+                                                           pcl::PointCloud<pcl::PointXYZI>& interpolated_voxblox_esdf_cloud,
+                                                           ceres::Solver::Summary& summary) {
+  voxblox::Transformation T_G_C;
+  voxblox::Pointcloud points_C;
+  voxblox::Colors colors;
+
+  for(Eigen::Vector3f point : cloud) {
+    points_C.emplace_back(voxblox::Point(point));
+    colors.emplace_back(voxblox::Color::Gray());
+  }
+
+  voxblox::TsdfMap::Config tsdf_config;
+  tsdf_config.tsdf_voxel_size = static_cast<voxblox::FloatingPoint>(0.05);
+
+  voxblox_tsdf_.reset(new voxblox::TsdfMap(tsdf_config));
+
+  voxblox::TsdfIntegratorBase::Config integrator_config;
+  integrator_config.voxel_carving_enabled = true;
+  integrator_config.default_truncation_distance = 0.5;
+  integrator_config.max_ray_length_m = 120.0;
+
+  std::shared_ptr<voxblox::TsdfIntegratorBase> tsdf_integrator;
+  tsdf_integrator.reset(new voxblox::SimpleTsdfIntegrator(
+                          integrator_config, voxblox_tsdf_->getTsdfLayerPtr())); //todo(kdaun) add config to choose between integrators
+
+  voxblox::EsdfMap::Config esdf_config;
+  esdf_config.esdf_voxel_size = static_cast<voxblox::FloatingPoint>(0.05);
+  //esdf_config.esdf_voxels_per_side = config.tsdf_voxels_per_side; //todo(kdaun) set form config
+  std::shared_ptr<voxblox::EsdfMap> voxblox_esdf(new voxblox::EsdfMap(esdf_config));
+
+  voxblox::EsdfIntegrator::Config esdf_integrator_config;
+  // Make sure that this is the same as the truncation distance OR SMALLER!
+  esdf_integrator_config.min_distance_m =
+      integrator_config.default_truncation_distance;
+  esdf_integrator_config.max_distance_m = 2.0;
+  esdf_integrator_config.default_distance_m = 2.0;
+  //esdf_integrator_config.min_diff_m = 0.3;
+
+  std::shared_ptr<voxblox::EsdfIntegrator> esdf_integrator;
+  esdf_integrator.reset(new voxblox::EsdfIntegrator(esdf_integrator_config,
+                                            voxblox_tsdf_->getTsdfLayerPtr(),
+                                            voxblox_esdf->getEsdfLayerPtr()));
+
+
+  tsdf_integrator->integratePointCloud(T_G_C, points_C, colors);
+
+  const bool clear_esdf = true; //todo(kdaun) copied this from voxblox for now, should go to config
+  if (clear_esdf) {
+    esdf_integrator->updateFromTsdfLayerBatch();
+  } else {
+    const bool clear_updated_flag = true;
+    esdf_integrator->updateFromTsdfLayer(clear_updated_flag);
+  }
+
+  esdf_integrator->updateFromTsdfLayerBatch();
+  esdf_integrator->updateFromTsdfLayer(true);
+
+  float max_truncation_distance = esdf_integrator_config.default_distance_m;
+  int coarsening_factor = 1;
+
+  const cartographer::transform::Rigid3d previous_pose;
+  cartographer::mapping_3d::scan_matching::CeresVoxbloxESDFScanMatcher voxblox_scan_matcher(ceres_scan_matcher_options_);
+  voxblox_scan_matcher.Match(previous_pose,
+                             initial_pose_estimate,
+  {{&cloud, voxblox_esdf}},
+                             max_truncation_distance,
+                             coarsening_factor,
+                             &matched_pose_estimate,
+                             &summary);
+
+
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr tsdf_unfiltered(new pcl::PointCloud<pcl::PointXYZI>);
+  createDistancePointcloudFromEsdfLayer(voxblox_esdf->getEsdfLayer(), tsdf_unfiltered.get());
+  // Create the filtering object
+  pcl::PassThrough<pcl::PointXYZI> pass;
+  pass.setInputCloud (tsdf_unfiltered);
+  pass.setFilterFieldName ("z");
+  pass.setFilterLimits (-0.01, 0.06);
+  //pass.setFilterLimitsNegative (true);
+  pass.filter (voxblox_esdf_cloud);
+  for(auto& p : voxblox_esdf_cloud)
+    p.intensity = std::abs(p.intensity);
+
+  cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxESDF interpolated_voxblox_esdf(voxblox_esdf, max_truncation_distance);
+  double min_x = -1.2;
+  double min_y = -51.2;
+  double min_z = 0.001;
+  double max_x = 1.2;
+  double max_y = 51.2;
+  double max_z = 0.001;
+  for(double x = min_x; x <= max_x; x += 0.01) {
+    for(double y = min_y; y <= max_y; y += 0.01) {
+      for(double z = min_z; z <= max_z; z += 0.01) {
+
+        double q = max_truncation_distance;
+        q = interpolated_voxblox_esdf.GetSDF((double)x,(double)y,(double)z,1);
+
+
+        pcl::PointXYZI p;
+        p.x = x;
+        p.y = y;
+        p.z = z;
+        p.intensity = std::abs(q);
+        interpolated_voxblox_esdf_cloud.push_back(p);
       }
     }
   }
@@ -376,7 +517,7 @@ void ScanMatchingBenchmark::evaluateProbabilityGridScanMatcher(const cartographe
   range_data.origin = Eigen::Vector3f{0,0,0};
 
   range_data_inserter.Insert(range_data, &hybrid_grid_high_res);
-  range_data_inserter.Insert(range_data, &hybrid_grid_low_res);
+//  range_data_inserter.Insert(range_data, &hybrid_grid_low_res);
 
   const cartographer::transform::Rigid3d previous_pose;
   cartographer::mapping_3d::scan_matching::CeresScanMatcher scan_matcher(ceres_scan_matcher_options_);
@@ -399,10 +540,10 @@ void ScanMatchingBenchmark::evaluateProbabilityGridScanMatcher(const cartographe
 
   cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid(hybrid_grid_high_res);
   float min_x = -2.;
-  float min_y = -2.;
+  float min_y = -51.2;
   float min_z = 0.;
   float max_x = 2.;
-  float max_y = 2.;
+  float max_y = 51.2;
   float max_z = 0.01;
   for(float x = min_x; x <= max_x; x += 0.01) {
     for(float y = min_y; y <= max_y; y += 0.01) {
