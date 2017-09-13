@@ -44,6 +44,13 @@ public:
 
 private:
 
+  void evaluateChiselTSDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
+                                      const cartographer::transform::Rigid3d& initial_pose_estimate,
+                                      cartographer::transform::Rigid3d& matched_pose_estimate,
+                                      pcl::PointCloud<pcl::PointXYZI>& chisel_tsdf_cloud,
+                                      pcl::PointCloud<pcl::PointXYZI>& interpolated_chisel_tsdf_cloud,
+                                      ceres::Solver::Summary& summary);
+
   void evaluateVoxbloxTSDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
                                       const cartographer::transform::Rigid3d& initial_pose_estimate,
                                       cartographer::transform::Rigid3d& matched_pose_estimate,

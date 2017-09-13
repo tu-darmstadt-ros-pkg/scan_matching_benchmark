@@ -4,10 +4,16 @@
 
 #include <cartographer/mapping_3d/scan_matching/ceres_scan_matcher.h>
 #include <cartographer/mapping_3d/scan_matching/ceres_voxblox_tsdf_scan_matcher.h>
+#include <cartographer/mapping_3d/scan_matching/ceres_tsdf_scan_matcher.h>
 #include <cartographer/mapping_3d/range_data_inserter.h>
 #include <cartographer/mapping_3d/proto/range_data_inserter_options.pb.h>
 #include <cartographer/mapping_3d/scan_matching/interpolated_voxblox_tsdf.h>
+#include <cartographer/mapping_3d/scan_matching/interpolated_tsdf.h>
 #include <cartographer/mapping_3d/scan_matching/interpolated_grid.h>
+#include <open_chisel/ChunkManager.h>
+#include <open_chisel/truncation/ConstantTruncator.h>
+#include <open_chisel/weighting/ConstantWeighter.h>
+#include <open_chisel/Chisel.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl/common/common.h>
 #include <pcl/io/vtk_io.h>
@@ -26,7 +32,7 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  TestSetGenerator generator(0.02, 2.0);
+  TestSetGenerator generator(0.01, 2.025);
   generator.generateCube(pointcloud);
 
 
@@ -45,6 +51,8 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   ros::Publisher hybrid_grid_interpolated_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("hybrid_grid_interpolated_pointcloud", 1, true);
   ros::Publisher voxblox_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("voxblox_tsdf_pointcloud", 1, true);
   ros::Publisher voxblox_interpolated_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("voxblox_interpolated_tsdf_pointcloud", 1, true);
+  ros::Publisher chisel_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("chisel_tsdf_pointcloud", 1, true);
+  ros::Publisher chisel_interpolated_tsdf_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("chisel_interpolated_tsdf_pointcloud", 1, true);
 
   ros::spinOnce();
 
@@ -54,6 +62,8 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   pcl::PointCloud<pcl::PointXYZI> hybrid_grid_interpolated_cloud;
   pcl::PointCloud<pcl::PointXYZI> voxblox_tsdf_cloud;
   pcl::PointCloud<pcl::PointXYZI> voxblox_interpolated_tsdf_cloud;
+  pcl::PointCloud<pcl::PointXYZI> chisel_tsdf_cloud;
+  pcl::PointCloud<pcl::PointXYZI> chisel_interpolated_tsdf_cloud;
 
   /*
   switch(scan_matcher_type)
@@ -83,6 +93,11 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
+  std::cout << "CHISEL_TSDF\n";
+  evaluateChiselTSDFScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, chisel_tsdf_cloud, chisel_interpolated_tsdf_cloud, summary);
+  std::cout<<"Before "<<initial_pose_estimate<<std::endl;
+  std::cout<<"After "<<matched_pose_estimate<<std::endl;
+  std::cout<<summary.BriefReport()<<std::endl;
 
 
   sensor_msgs::PointCloud2 benchmark_pointcloud_msg;
@@ -93,7 +108,6 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   benchmark_pointcloud_msg.header.stamp = ros::Time::now();
   benchmark_pointcloud_msg.header.frame_id = "world";
   benchmark_pointcloud_publisher.publish(benchmark_pointcloud_msg);
-
 
   sensor_msgs::PointCloud2 hybrid_grid_cloud_msg;
   pcl::toROSMsg(hybrid_grid_cloud, hybrid_grid_cloud_msg);
@@ -107,8 +121,6 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   hybrid_grid_interpolated_cloud_msg.header.frame_id = "world";
   hybrid_grid_interpolated_pointcloud_publisher.publish(hybrid_grid_interpolated_cloud_msg);
 
-
-
   sensor_msgs::PointCloud2 voxblox_tsdf_cloud_msg;
   pcl::toROSMsg(voxblox_tsdf_cloud, voxblox_tsdf_cloud_msg);
   voxblox_tsdf_cloud_msg.header.stamp = ros::Time::now();
@@ -121,12 +133,142 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   voxblox_interpolated_tsdf_cloud_msg.header.frame_id = "world";
   voxblox_interpolated_tsdf_pointcloud_publisher.publish(voxblox_interpolated_tsdf_cloud_msg);
 
+  sensor_msgs::PointCloud2 chisel_tsdf_cloud_msg;
+  pcl::toROSMsg(chisel_tsdf_cloud, chisel_tsdf_cloud_msg);
+  chisel_tsdf_cloud_msg.header.stamp = ros::Time::now();
+  chisel_tsdf_cloud_msg.header.frame_id = "world";
+  chisel_tsdf_pointcloud_publisher.publish(chisel_tsdf_cloud_msg);
+
+  sensor_msgs::PointCloud2 chisel_interpolated_tsdf_cloud_msg;
+  pcl::toROSMsg(chisel_interpolated_tsdf_cloud, chisel_interpolated_tsdf_cloud_msg);
+  chisel_interpolated_tsdf_cloud_msg.header.stamp = ros::Time::now();
+  chisel_interpolated_tsdf_cloud_msg.header.frame_id = "world";
+  chisel_interpolated_tsdf_pointcloud_publisher.publish(chisel_interpolated_tsdf_cloud_msg);
+
   ros::spin();
 
 
 
 }
 
+void ScanMatchingBenchmark::evaluateChiselTSDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
+                                                          const cartographer::transform::Rigid3d& initial_pose_estimate,
+                                                          cartographer::transform::Rigid3d& matched_pose_estimate,
+                                                          pcl::PointCloud<pcl::PointXYZI>& chisel_tsdf_cloud,
+                                                          pcl::PointCloud<pcl::PointXYZI>& interpolated_chisel_tsdf_cloud,
+                                                          ceres::Solver::Summary& summary)
+{
+  chisel::PointCloud cloudOut;
+  cloudOut.GetMutablePoints().resize(cloud.size());
+
+  size_t i = 0;
+  for (const Eigen::Vector3f& pt : cloud)
+  {
+    chisel::Vec3& xyz =  cloudOut.GetMutablePoints().at(i);
+    xyz(0) = pt(0);
+    xyz(1) = pt(1);
+    xyz(2) = pt(2);
+    i++;
+  }
+
+  chisel::Vec3 chisel_pose;
+  chisel_pose.x() = 0.;
+  chisel_pose.y() = 0.;
+  chisel_pose.z() = 0.;
+
+  chisel::ChiselPtr<chisel::DistVoxel> chisel_tsdf;
+  chisel_tsdf.reset(new chisel::Chisel<chisel::DistVoxel>({8,8,8}, 0.05, false, {0,0,0}));
+
+  chisel::ProjectionIntegrator projection_integrator;
+  projection_integrator.SetCentroids(chisel_tsdf->GetChunkManager().GetCentroids());
+  projection_integrator.SetTruncator(chisel::TruncatorPtr(new chisel::ConstantTruncator(0.1, 1.0)));
+  projection_integrator.SetWeighter(chisel::WeighterPtr(new chisel::ConstantWeighter(1)));
+  projection_integrator.SetCarvingDist(0.2);
+  projection_integrator.SetCarvingEnabled(false);
+
+  chisel_tsdf->GetMutableChunkManager().clearIncrementalChanges();
+  //min and max dist are already filtered in the local trajectory builder
+  chisel_tsdf->IntegratePointCloud(projection_integrator, cloudOut,
+                                   chisel_pose, 0.0f, HUGE_VALF);
+  chisel_tsdf->UpdateMeshes();
+
+
+  const cartographer::transform::Rigid3d previous_pose;
+  cartographer::mapping_3d::scan_matching::CeresTSDFScanMatcher chisel_scan_matcher(ceres_scan_matcher_options_);
+  chisel_scan_matcher.Match(previous_pose,
+                             initial_pose_estimate,
+  {{&cloud, chisel_tsdf}},
+                             0.12,
+                             1,
+                             &matched_pose_estimate,
+                             &summary);
+
+
+
+  cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, 0.12);
+  double min_x = -1.2;
+  double min_y = -1.2;
+  double min_z = 0.001;
+  double max_x = 1.2;
+  double max_y = 1.2;
+  double max_z = 0.001;
+  for(double x = min_x; x <= max_x; x += 0.01) {
+    for(double y = min_y; y <= max_y; y += 0.01) {
+      for(double z = min_z; z <= max_z; z += 0.01) {
+
+        double q = interpolated_chisel_tsdf.GetSDF((double)x,(double)y,(double)z,1);
+        pcl::PointXYZI p;
+        p.x = x;
+        p.y = y;
+        p.z = z;
+        p.intensity = std::abs(q);
+        interpolated_chisel_tsdf_cloud.push_back(p);
+      }
+    }
+  }
+
+   min_x = -1.2;
+   min_y = -1.2;
+   min_z = 0.000;
+   max_x = 1.2;
+   max_y = 1.2;
+   max_z = 0.001;
+  for(double x = min_x; x <= max_x; x += 0.05) {
+    for(double y = min_y; y <= max_y; y += 0.05) {
+      for(double z = min_z; z <= max_z; z += 0.05) {
+        const auto& chunk_manager = chisel_tsdf->GetChunkManager();
+        const chisel::DistVoxel* voxel = chunk_manager.GetDistanceVoxel(chisel::Vec3(x,y,z));
+
+        double sdf = NAN;
+        bool valid = false;
+        if(voxel) {
+          if(voxel->IsValid()) {
+            sdf = voxel->GetSDF();
+            valid = true;
+          }
+        }
+        if(std::abs(sdf) > 10.0 )
+        {
+          //LOG(WARNING)<<"q > max_truncation_distance "<< q <<" > "<< max_truncation_distance_;
+          //s LOG(WARNING)<<"weight: "<< voxel->GetWeight();
+          sdf = NAN;
+          valid = false;
+        }
+        if(valid) {
+          pcl::PointXYZI p;
+          p.x = x;
+          p.y = y;
+          p.z = z;
+          p.intensity = sdf;
+          chisel_tsdf_cloud.push_back(p);
+        }
+
+      }
+    }
+  }
+
+
+}
 
 void ScanMatchingBenchmark::evaluateVoxbloxTSDFScanMatcher(const cartographer::sensor::PointCloud& cloud,
                                                            const cartographer::transform::Rigid3d& initial_pose_estimate,
@@ -187,91 +329,25 @@ void ScanMatchingBenchmark::evaluateVoxbloxTSDFScanMatcher(const cartographer::s
     p.intensity = std::abs(p.intensity);
 
   cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxTSDF interpolated_voxblox_tsdf(voxblox_tsdf_, max_truncation_distance);
-  double min_x = -1.5;
-  double min_y = -1.5;
-  double min_z = 0.;
-  double max_x = 1.5;
-  double max_y = 1.5;
-  double max_z = 0.00;
-  for(double x = min_x; x <= max_x; x += 0.001) {
-    for(double y = min_y; y <= max_y; y += 0.001) {
-      for(double z = min_z; z <= max_z; z += 0.001) {
+  double min_x = -1.2;
+  double min_y = -1.2;
+  double min_z = 0.001;
+  double max_x = 1.2;
+  double max_y = 1.2;
+  double max_z = 0.001;
+  for(double x = min_x; x <= max_x; x += 0.01) {
+    for(double y = min_y; y <= max_y; y += 0.01) {
+      for(double z = min_z; z <= max_z; z += 0.01) {
 
         double q = max_truncation_distance;
         q = interpolated_voxblox_tsdf.GetSDF((double)x,(double)y,(double)z,1);
-        double x1, y1, z1, x2, y2, z2;
 
-        interpolated_voxblox_tsdf.ComputeInterpolationDataPoints(x, y, z, &x1, &y1, &z1, &x2, &y2, &z2);
-        //x1 += 0.025;
-        //x2 += 0.025;
-       // y1 += 0.025;
-       // y2 += 0.025;
-       // z1 += 0.025;
-      //  z2 += 0.025;
-
-        if(x1 > x){
-          x1 -= 0.05;
-          x2 -= 0.05;
-        }
-        if(z1 > z){
-          z1 -= 0.05;
-          z2 -= 0.05;
-        }
-        if(z1 > z){
-          z1 -= 0.05;
-          z2 -= 0.05;
-        }
-
-        //ROS_INFO("point p %f %f %f p0 %f %f %f p1 %f %f %f",x,y,z,x1, y1, z1, x2, y2, z2);
-
-        const double q111 = interpolated_voxblox_tsdf.getVoxelSDF(x1, y1, z1);
-        const double q112 = interpolated_voxblox_tsdf.getVoxelSDF(x1, y1, z2);
-        const double q121 = interpolated_voxblox_tsdf.getVoxelSDF(x1, y2, z1);
-        const double q122 = interpolated_voxblox_tsdf.getVoxelSDF(x1, y2, z2);
-        const double q211 = interpolated_voxblox_tsdf.getVoxelSDF(x2, y1, z1);
-        const double q212 = interpolated_voxblox_tsdf.getVoxelSDF(x2, y1, z2);
-        const double q221 = interpolated_voxblox_tsdf.getVoxelSDF(x2, y2, y1);
-        const double q222 = interpolated_voxblox_tsdf.getVoxelSDF(x2, y2, z2);
-
-
-        //ROS_INFO("point q %f %f %f  %f %f %f  %f %f",q111,q112,q121,q122,q211,q212,q221,q222);
-
-        const double normalized_x = (x - x1) / (x2 - x1);
-        const double normalized_y = (y - y1) / (y2 - y1);
-        const double normalized_z = (z - z1) / (z2 - z1);
-
-        // Compute pow(..., 2) and pow(..., 3). Using pow() here is very expensive.
-        const double normalized_xx = normalized_x * normalized_x;
-        const double normalized_xxx = normalized_x * normalized_xx;
-        const double normalized_yy = normalized_y * normalized_y;
-        const double normalized_yyy = normalized_y * normalized_yy;
-        const double normalized_zz = normalized_z * normalized_z;
-        const double normalized_zzz = normalized_z * normalized_zz;
-
-        // We first interpolate in z, then y, then x. All 7 times this uses the same
-        // scheme: A * (2t^3 - 3t^2 + 1) + B * (-2t^3 + 3t^2).
-        // The first polynomial is 1 at t=0, 0 at t=1, the second polynomial is 0
-        // at t=0, 1 at t=1. Both polynomials have derivative zero at t=0 and t=1.
-        const double q11 = (q111 - q112) * normalized_zzz * 2. +
-            (q112 - q111) * normalized_zz * 3. + q111;
-        const double q12 = (q121 - q122) * normalized_zzz * 2. +
-            (q122 - q121) * normalized_zz * 3. + q121;
-        const double q21 = (q211 - q212) * normalized_zzz * 2. +
-            (q212 - q211) * normalized_zz * 3. + q211;
-        const double q22 = (q221 - q222) * normalized_zzz * 2. +
-            (q222 - q221) * normalized_zz * 3. + q221;
-        const double q1 = (q11 - q12) * normalized_yyy * 2. +
-            (q12 - q11) * normalized_yy * 3. + q11;
-        const double q2 = (q21 - q22) * normalized_yyy * 2. +
-            (q22 - q21) * normalized_yy * 3. + q21;
-        double int_res = (q1 - q2) * normalized_xxx * 2. + (q2 - q1) * normalized_xx * 3. +
-            q1;
 
         pcl::PointXYZI p;
         p.x = x;
         p.y = y;
         p.z = z;
-        p.intensity = int_res;
+        p.intensity = std::abs(q);
         interpolated_voxblox_tsdf_cloud.push_back(p);
       }
     }
