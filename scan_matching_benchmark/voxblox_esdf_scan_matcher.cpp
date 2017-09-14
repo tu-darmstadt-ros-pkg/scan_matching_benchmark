@@ -63,17 +63,17 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
                           integrator_config, voxblox_tsdf->getTsdfLayerPtr())); //todo(kdaun) add config to choose between integrators
 
   voxblox::EsdfMap::Config esdf_config;
-  esdf_config.esdf_voxel_size = static_cast<voxblox::FloatingPoint>(0.05);
+  esdf_config.esdf_voxel_size = static_cast<voxblox::FloatingPoint>(config_.resolution);
+  esdf_config.esdf_voxels_per_side = voxblox_tsdf->getTsdfLayerPtr()->voxels_per_side();
   //esdf_config.esdf_voxels_per_side = config.tsdf_voxels_per_side; //todo(kdaun) set form config
-  std::shared_ptr<voxblox::EsdfMap> voxblox_esdf(new voxblox::EsdfMap(esdf_config));
+  std::shared_ptr<voxblox::EsdfMap> voxblox_esdf;
+  voxblox_esdf.reset(new voxblox::EsdfMap(esdf_config));
 
   voxblox::EsdfIntegrator::Config esdf_integrator_config;
   // Make sure that this is the same as the truncation distance OR SMALLER!
-  esdf_integrator_config.min_distance_m =
-      integrator_config.default_truncation_distance;
-  esdf_integrator_config.max_distance_m = 2.0;
-  esdf_integrator_config.default_distance_m = 2.0;
-  //esdf_integrator_config.min_diff_m = 0.3;
+  esdf_integrator_config.min_distance_m = esdf_config.esdf_voxel_size;
+  esdf_integrator_config.max_distance_m = config_.esdf_distance;
+  esdf_integrator_config.default_distance_m = config_.esdf_distance;
 
   std::shared_ptr<voxblox::EsdfIntegrator> esdf_integrator;
   esdf_integrator.reset(new voxblox::EsdfIntegrator(esdf_integrator_config,

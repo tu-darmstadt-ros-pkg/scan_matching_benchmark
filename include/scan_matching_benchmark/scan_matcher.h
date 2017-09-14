@@ -13,8 +13,9 @@ struct ScanMatcherConfig
 public:
   bool publish_cloud = true;
   bool verbose = true;
-  bool truncation_distance = 0.2;
   float resolution = 0.05;
+  float truncation_distance = 0.4;
+  float esdf_distance = 1.0;
   float interpolation_map_min_x = -5.0;
   float interpolation_map_min_y = -5.0;
   float interpolation_map_min_z = 0.0;
