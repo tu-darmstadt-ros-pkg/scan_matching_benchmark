@@ -70,8 +70,8 @@ void VoxbloxTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
   const cartographer::transform::Rigid3d previous_pose;
 
   cartographer::mapping_3d::scan_matching::proto::CeresScanMatcherOptions ceres_scan_matcher_options;
-  ceres_scan_matcher_options.set_translation_weight(0.0000001);
-  ceres_scan_matcher_options.set_rotation_weight(0.0000000001);
+  ceres_scan_matcher_options.set_translation_weight(0.0);
+  ceres_scan_matcher_options.set_rotation_weight(0.0);
   ceres_scan_matcher_options.add_occupied_space_weight(10.0);
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_max_num_iterations(300);
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);

@@ -13,14 +13,15 @@ struct ScanMatcherConfig
 public:
   bool publish_cloud = true;
   bool verbose = true;
+  bool multi_res_probability_grid = false;
   float resolution = 0.05;
   float truncation_distance = 0.4;
   float esdf_distance = 1.0;
-  float interpolation_map_min_x = -5.0;
-  float interpolation_map_min_y = -5.0;
+  float interpolation_map_min_x = -3.0;
+  float interpolation_map_min_y = -15.0;
   float interpolation_map_min_z = 0.0;
-  float interpolation_map_max_x = 5.0;
-  float interpolation_map_max_y = 5.0;
+  float interpolation_map_max_x = 3.0;
+  float interpolation_map_max_y = 15.0;
   float interpolation_map_max_z = 0.01;
 };
 
