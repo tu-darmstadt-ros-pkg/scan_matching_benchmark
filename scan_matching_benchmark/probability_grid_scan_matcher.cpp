@@ -49,7 +49,7 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_max_num_iterations(300);
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
   cartographer::mapping_3d::scan_matching::CeresScanMatcher scan_matcher(ceres_scan_matcher_options);
-  scan_matcher.Match(previous_pose,
+  scan_matcher.Match(initial_pose_estimate,
                      initial_pose_estimate,
   {{&scan_cloud, &hybrid_grid_high_res}},
                      &matched_pose_estimate,

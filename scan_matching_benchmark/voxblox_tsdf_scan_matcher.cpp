@@ -77,7 +77,7 @@ void VoxbloxTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
 
   cartographer::mapping_3d::scan_matching::CeresVoxbloxTSDFScanMatcher voxblox_scan_matcher(ceres_scan_matcher_options);
-  voxblox_scan_matcher.Match(previous_pose,
+  voxblox_scan_matcher.Match(initial_pose_estimate,
                              initial_pose_estimate,
   {{&scan_cloud, voxblox_tsdf}},
                              max_truncation_distance,

@@ -75,7 +75,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
 
   cartographer::mapping_3d::scan_matching::CeresTSDFScanMatcher chisel_scan_matcher(ceres_scan_matcher_options);
-  chisel_scan_matcher.Match(previous_pose,
+  chisel_scan_matcher.Match(initial_pose_estimate,
                             initial_pose_estimate,
   {{&scan_cloud, chisel_tsdf}},
                             config_.truncation_distance*1.2,

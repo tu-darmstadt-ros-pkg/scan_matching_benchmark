@@ -84,13 +84,13 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 
 
 
-LargeScanMatchingBenchmark::LargeScanMatchingBenchmark(ros::NodeHandle &nh)
+BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  int num_iterations_per_initial_error = 10;
+  int num_iterations_per_initial_error = 5;
   float min_initial_error = 0.0;
-  float max_initial_error = 2.0;
+  float max_initial_error = 1.5;
   float initial_error_stepsize = 0.1;
 
   std::ofstream myfile;
@@ -117,12 +117,14 @@ LargeScanMatchingBenchmark::LargeScanMatchingBenchmark(ros::NodeHandle &nh)
   ScanMatcherConfig scan_matcher_config;
   scan_matcher_config.publish_cloud = false;
 
+
   for(float initial_error = min_initial_error; initial_error <= max_initial_error; initial_error += initial_error_stepsize) {
+    std::cout<<"Finished "<<(initial_error-min_initial_error)*100.0/(max_initial_error-min_initial_error)<<"%"<<std::endl;
     float sample_resolution = 0.04;
     std::string sample_type = "cuboid";
-    float sample_size_x = 4 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
-    float sample_size_y = 4 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
-    float sample_size_z = 4 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_size_x = 3 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_size_y = 3 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_size_z = 3 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     TestSetGenerator generator(sample_resolution);
     generator.generateCuboid(pointcloud, sample_size_x, sample_size_y, sample_size_z);
     for(int i_initial_error= 0; i_initial_error < num_iterations_per_initial_error; ++i_initial_error) {
@@ -174,7 +176,10 @@ LargeScanMatchingBenchmark::LargeScanMatchingBenchmark(ros::NodeHandle &nh)
           <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
          <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
         <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)<<"\n";
+
     }
+
+    std::cout<<"Finished "<<(initial_error-min_initial_error)*100.0/(max_initial_error-min_initial_error)<<"%"<<std::endl;
   }
 
 

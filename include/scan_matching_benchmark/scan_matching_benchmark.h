@@ -17,10 +17,10 @@ private:
 
 };
 
-class LargeScanMatchingBenchmark
+class BatchScanMatchingBenchmark
 {
 public:
-  LargeScanMatchingBenchmark(ros::NodeHandle &nh);
+  BatchScanMatchingBenchmark(ros::NodeHandle &nh);
 
 private:
 

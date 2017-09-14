@@ -34,7 +34,7 @@
 int main(int argc, char **argv) {
   ros::init(argc, argv, ROS_PACKAGE_NAME);
   ros::NodeHandle nh;
-  LargeScanMatchingBenchmark scan_matching_benchmark(nh);
+  BatchScanMatchingBenchmark scan_matching_benchmark(nh);
   while(ros::ok())
   {
       ros::spin();
