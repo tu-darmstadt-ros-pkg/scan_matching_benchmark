@@ -1,16 +1,46 @@
 import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
 import pandas as pd
 import os as os
 import numpy as np
 
-def process_scan_matcher(scan_matcher_df):
+
+colors = ['red', 'yellow', 'green', 'blue', 'black']
+
+colors = plt.cm.Set1(np.linspace(0, 1, 9))
+
+def process_matching_time(scan_matcher_df):
+    initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_y.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_z.as_matrix()))
+    initial_errors = np.reshape(initial_errors, (-1, batch_size))
+    times = scan_matcher_df.time_scan_matching.as_matrix()
+    times = np.reshape(times, (-1, batch_size))
+    mean_initial_errors = np.mean(initial_errors, 1)
+    mean_times = np.mean(times, 1)
+    var_times = np.var(times, 1)
+    return mean_initial_errors, mean_times, var_times
+
+
+def process_map_update_time(scan_matcher_df):
+    initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_y.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_z.as_matrix()))
+    initial_errors = np.reshape(initial_errors, (-1, batch_size))
+    times = scan_matcher_df.time_map_update.as_matrix()
+    times = np.reshape(times, (-1, batch_size))
+    mean_initial_errors = np.mean(initial_errors, 1)
+    mean_times = np.mean(times, 1)
+    var_times = np.var(times, 1)
+    return mean_initial_errors, mean_times, var_times
+
+
+def process_matching_error(scan_matcher_df):
     initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
                              + np.square(scan_matcher_df.initial_error_y.as_matrix())
                              + np.square(scan_matcher_df.initial_error_z.as_matrix()))
     matched_errors = (np.sqrt(np.square(scan_matcher_df.matched_error_x.as_matrix())
-                             + np.square(scan_matcher_df.matched_error_y.as_matrix())
-                             + np.square(scan_matcher_df.matched_error_z.as_matrix())))
+                              + np.square(scan_matcher_df.matched_error_y.as_matrix())
+                              + np.square(scan_matcher_df.matched_error_z.as_matrix())))
     initial_errors = np.reshape(initial_errors, (-1, batch_size))
     matched_errors = np.reshape(matched_errors, (-1, batch_size))
 
@@ -19,48 +49,53 @@ def process_scan_matcher(scan_matcher_df):
     var_matched_errors = np.var(matched_errors, 1)
     return mean_initial_errors, mean_matched_errors, var_matched_errors
 
-batch_size = 20
-df = pd.read_csv(os.path.expanduser('~') + "/scan_matching_benchmark_09-14-2017_15-42-10.csv")
-scan_matchers = ['ProbabilityGridScanMatcher', 'ChiselTSDFScanMatcher', 'VoxbloxTSDFScanMatcher',
-                 'VoxbloxESDFScanMatcher','ProbabilityGridScanMatcherMultiRes']
 
-pg_mean_initial_errors, pg_mean_matched_errors, pg_var_matched_errors = process_scan_matcher(df[df.scan_matcher ==
-                                                                                       'ProbabilityGridScanMatcher'])
-pgmr_mean_initial_errors, pgmr_mean_matched_errors, pgmr_var_matched_errors = process_scan_matcher(df[df.scan_matcher ==
-                                                                                       'ProbabilityGridScanMatcherMultiRes'])
-ct_mean_initial_errors, ct_mean_matched_errors, ct_var_matched_errors = process_scan_matcher(df[df.scan_matcher ==
-                                                                                       'ChiselTSDFScanMatcher'])
-vt_mean_initial_errors, vt_mean_matched_errors, vt_var_matched_errors = process_scan_matcher(df[df.scan_matcher ==
-                                                                                       'VoxbloxTSDFScanMatcher'])
-ve_mean_initial_errors, ve_mean_matched_errors, ve_var_matched_errors = process_scan_matcher(df[df.scan_matcher ==
-                                                                                       'VoxbloxESDFScanMatcher'])
-
-N = ve_mean_initial_errors.size
-ind = np.arange(N)  # the x locations for the groups
-width = 0.8/len(scan_matchers)     # the width of the bars
-
-fig, ax = plt.subplots()
-rects1 = ax.bar(ind, pg_mean_matched_errors, width, color='r')#, yerr=pg_var_matched_errors)
-rects2 = ax.bar(ind + width, ct_mean_matched_errors, width, color='y')#, yerr=ct_var_matched_errors)
-rects3 = ax.bar(ind + width*2, vt_mean_matched_errors, width, color='g')#, yerr=vt_var_matched_errors)
-rects4 = ax.bar(ind + width*3, ve_mean_matched_errors, width, color='b')#, yerr=ve_var_matched_errors)
-rects5 = ax.bar(ind + width*4, pgmr_mean_matched_errors, width, color='black')#, yerr=pgmr_var_matched_errors)
-
-# add some text for labels, title and axes ticks
-ax.set_ylabel('Matching Error')
-ax.set_xlabel('Initial Error')
-ax.set_xticks(ind + width / 2)
-ax.set_xticklabels(np.round(pg_mean_initial_errors, 2))
-#ax.set_ylim(ymax=0.001)
+def process_solver_iterations(scan_matcher_df):
+    initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_y.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_z.as_matrix()))
+    initial_errors = np.reshape(initial_errors, (-1, batch_size))
+    times = scan_matcher_df.solver_iterations.as_matrix()
+    times = np.reshape(times, (-1, batch_size))
+    mean_initial_errors = np.mean(initial_errors, 1)
+    mean_times = np.mean(times, 1)
+    var_times = np.var(times, 1)
+    return mean_initial_errors, mean_times, var_times
 
 
-ax.legend((rects1[0], rects2[0], rects3[0], rects4[0], rects5[0]), scan_matchers)
+def plot_generic(df, scan_matchers, processing_function, ylabel):
+    processed_error_data = []
+    n_sm = len(scan_matchers)
+    for scan_matcher in scan_matchers:
+        processed_error_data.append(processing_function(df[df.scan_matcher == scan_matcher]))
+    N = processed_error_data[0][0].size
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.8 / n_sm  # the width of the bars
+    fig, ax = plt.subplots()
+    bars = []
+    bar_index = 0
+    for data in processed_error_data:
+        bars.append(ax.bar(ind + bar_index * width, data[1], width, color=colors[bar_index]))
+        bar_index += 1
+
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel('Initial Error')
+    ax.set_xticks(ind + width*(n_sm-1) / 2)
+    ax.set_xticklabels(np.round(processed_error_data[0][0], 2))
+
+    legend_handles = []
+    for bar in bars:
+        legend_handles.append(bar[0])
+    ax.legend(legend_handles, scan_matchers)
 
 
-plt.show()
+df = pd.read_csv(os.path.expanduser('~') + "/argo/src/scan_matching_benchmark_09-15-2017_15-12-21.csv")
+scan_matchers = df.scan_matcher.unique()
+print(df.scan_matcher.unique())
+batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)
 
-
-
-
-#plt.legend()
+plot_generic(df, scan_matchers, process_matching_error, 'Matching Error')
+plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
+plot_generic(df, scan_matchers, process_map_update_time, 'Update Time')
+plot_generic(df, scan_matchers, process_matching_time, 'Processing Time')
 plt.show()
