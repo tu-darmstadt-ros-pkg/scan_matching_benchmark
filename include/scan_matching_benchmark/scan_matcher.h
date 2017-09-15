@@ -5,7 +5,9 @@
 #include <cartographer/sensor/point_cloud.h>
 #include <pcl/common/common.h>
 #include <ros/ros.h>
-#include <voxblox/core/tsdf_map.h>
+#include <cstdio>
+#include <ctime>
+#include <chrono>
 
 
 struct ScanMatcherConfig
@@ -32,6 +34,8 @@ public:
   virtual void evaluateScanMatcher(const cartographer::sensor::PointCloud& scan_cloud,
                                    const cartographer::transform::Rigid3d& initial_pose_estimate,
                                    cartographer::transform::Rigid3d& matched_pose_estimate,
+                                   double& time_map_update, //seconds
+                                   double& time_scan_matching, //seconds
                                    ceres::Solver::Summary& summary) = 0;
   void publishClouds();
 

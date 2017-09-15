@@ -28,6 +28,8 @@ ChiselTSDFScanMatcher::ChiselTSDFScanMatcher(ros::NodeHandle &nh, ScanMatcherCon
 void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::PointCloud& scan_cloud,
                                                 const cartographer::transform::Rigid3d& initial_pose_estimate,
                                                 cartographer::transform::Rigid3d& matched_pose_estimate,
+                                                double &time_map_update, //seconds
+                                                double &time_scan_matching, //seconds
                                                 ceres::Solver::Summary& summary) {
   std::cout << "CHISEL_TSDF\n";
   chisel::PointCloud cloudOut;
@@ -60,9 +62,12 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
 
   chisel_tsdf->GetMutableChunkManager().clearIncrementalChanges();
   //min and max dist are already filtered in the local trajectory builder
+
+  std::clock_t start_map_update = std::clock();
   chisel_tsdf->IntegratePointCloud(projection_integrator, cloudOut,
                                    chisel_pose, 0.0f, HUGE_VALF);
-  chisel_tsdf->UpdateMeshes();
+  time_map_update = (std::clock() - start_map_update) / (double)CLOCKS_PER_SEC;
+  //chisel_tsdf->UpdateMeshes();
 
 
   const cartographer::transform::Rigid3d previous_pose;
@@ -74,7 +79,9 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_max_num_iterations(300);
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
 
+
   cartographer::mapping_3d::scan_matching::CeresTSDFScanMatcher chisel_scan_matcher(ceres_scan_matcher_options);
+  std::clock_t start_scan_matching = std::clock();
   chisel_scan_matcher.Match(initial_pose_estimate,
                             initial_pose_estimate,
   {{&scan_cloud, chisel_tsdf}},
@@ -82,6 +89,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
                             1,
                             &matched_pose_estimate,
                             &summary);
+  time_scan_matching = (std::clock() - start_scan_matching) / (double)CLOCKS_PER_SEC;
 
 
 

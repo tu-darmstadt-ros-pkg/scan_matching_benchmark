@@ -9,6 +9,8 @@ public:
   void evaluateScanMatcher(const cartographer::sensor::PointCloud& scan_cloud,
                            const cartographer::transform::Rigid3d& initial_pose_estimate,
                            cartographer::transform::Rigid3d& matched_pose_estimate,
+                           double& time_map_update, //seconds
+                           double& time_scan_matching, //seconds
                            ceres::Solver::Summary& summary) override;
 protected:
 };

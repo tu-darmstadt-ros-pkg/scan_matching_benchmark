@@ -35,8 +35,8 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  TestSetGenerator generator(0.028);
-  generator.generateCuboid(pointcloud, 1.025, 18.025, 3.025);
+  TestSetGenerator generator(0.02);
+  generator.generateCuboid(pointcloud, 3.0, 3.0, 3.0);
 
   const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({0.1,0.1,0.1});
   cartographer::transform::Rigid3d matched_pose_estimate;
@@ -46,33 +46,35 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   ros::spinOnce();
   ScanMatcherConfig scan_matcher_config;/*
   ProbabilityGridScanMatcher probability_grid_scan_matcher(nh, scan_matcher_config);
-  probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+  probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
 
   scan_matcher_config.multi_res_probability_grid = true;
   ProbabilityGridScanMatcher probability_grid_scan_matcher_multi_res(nh, scan_matcher_config);
-  probability_grid_scan_matcher_multi_res.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+  probability_grid_scan_matcher_multi_res.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
   scan_matcher_config.multi_res_probability_grid = false;*/
+  double time_map_update = 0.0;
+  double time_scan_matching = 0.0;
 
   ChiselTSDFScanMatcher chisel_tsdf_scan_matcher(nh, scan_matcher_config);
-  chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+  chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
 
   VoxbloxTSDFScanMatcher voxblox_tsdf_scan_matcher(nh, scan_matcher_config);
-  voxblox_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+  voxblox_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
 
   VoxbloxESDFScanMatcher voxblox_esdf_scan_matcher(nh, scan_matcher_config);
-  voxblox_esdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+  voxblox_esdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
@@ -96,9 +98,9 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  int num_iterations_per_initial_error = 20;
+  int num_iterations_per_initial_error = 5;
   float min_initial_error = 0.0;
-  float max_initial_error = 1.5;
+  float max_initial_error = 2.6;
   float initial_error_stepsize = 0.1;
 
   std::ofstream myfile;
@@ -115,7 +117,8 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
        <<"grid_resolution"<<","<<"truncation_distance"<<","<<"esdf_distance"<<","
       <<"initial_error_x"<<","<<"initial_error_y"<<","<<"initial_error_z"<<","
      <<"matched_error_x"<<","<<"matched_error_y"<<","<<"matched_error_z"
-    <<","<<"solver_iterations"<<","<<"solver_termination_type"<<"\n";
+    <<","<<"solver_iterations"<<","<<"solver_termination_type"<<","
+   <<"time_map_update"<<","<<"time_scan_matching"<<"\n";
 
 
   std::random_device r;
@@ -128,7 +131,7 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 
   for(float initial_error = min_initial_error; initial_error <= max_initial_error; initial_error += initial_error_stepsize) {
     std::cout<<"Finished "<<(initial_error-min_initial_error)*100.0/(max_initial_error-min_initial_error)<<"%"<<std::endl;
-    float sample_resolution = 0.04;
+    float sample_resolution = 0.021832691347;
     std::string sample_type = "cuboid";
     float sample_size_x = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     float sample_size_y = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
@@ -144,53 +147,59 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
       const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({initial_error_x,initial_error_y,initial_error_z});
       cartographer::transform::Rigid3d matched_pose_estimate;
       ceres::Solver::Summary summary;
-
+      double time_map_update = 0.0;
+      double time_scan_matching = 0.0;
       ProbabilityGridScanMatcher probability_grid_scan_matcher(nh, scan_matcher_config);
-      probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+      probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
       myfile << std::setprecision (15)<<"ProbabilityGridScanMatcher"<<","<<sample_resolution<<","
             <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
            <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
           <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
          <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)<<"\n";
+        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+          <<","<<time_map_update<<","<<time_scan_matching<<"\n";
 
       scan_matcher_config.multi_res_probability_grid = true;
       ProbabilityGridScanMatcher probability_grid_scan_matcher_multi_res(nh, scan_matcher_config);
-      probability_grid_scan_matcher_multi_res.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+      probability_grid_scan_matcher_multi_res.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
       myfile << std::setprecision (15)<<"ProbabilityGridScanMatcherMultiRes"<<","<<sample_resolution<<","
             <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
            <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
           <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
          <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)<<"\n";
+        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
       scan_matcher_config.multi_res_probability_grid = false;
 
       ChiselTSDFScanMatcher chisel_tsdf_scan_matcher(nh, scan_matcher_config);
-      chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+      chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
       myfile << std::setprecision (15)<<"ChiselTSDFScanMatcher"<<","<<sample_resolution<<","
             <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
            <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
           <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
          <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)<<"\n";
+        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
 
       VoxbloxTSDFScanMatcher voxblox_tsdf_scan_matcher(nh, scan_matcher_config);
-      voxblox_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+      voxblox_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
       myfile << std::setprecision (15)<<"VoxbloxTSDFScanMatcher"<<","<<sample_resolution<<","
             <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
            <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
           <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
          <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)<<"\n";
+        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
 
       VoxbloxESDFScanMatcher voxblox_esdf_scan_matcher(nh, scan_matcher_config);
-      voxblox_esdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, summary);
+      voxblox_esdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
       myfile << std::setprecision (15)<<"VoxbloxESDFScanMatcher"<<","<<sample_resolution<<","
             <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
            <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
           <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
          <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)<<"\n";
+        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
 
     }
   }

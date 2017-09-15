@@ -37,6 +37,8 @@ VoxbloxESDFScanMatcher::VoxbloxESDFScanMatcher(ros::NodeHandle &nh, ScanMatcherC
 void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::PointCloud& scan_cloud,
                                                 const cartographer::transform::Rigid3d& initial_pose_estimate,
                                                 cartographer::transform::Rigid3d& matched_pose_estimate,
+                                                double &time_map_update, //seconds
+                                                double &time_scan_matching, //seconds
                                                 ceres::Solver::Summary& summary) {
   std::cout << "VOXBLOX_ESDF\n";
   voxblox::Transformation T_G_C;
@@ -81,6 +83,7 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
                                             voxblox_esdf->getEsdfLayerPtr()));
 
 
+  std::clock_t start_map_update = std::clock();
   tsdf_integrator->integratePointCloud(T_G_C, points_C, colors);
 
   const bool clear_esdf = true; //todo(kdaun) copied this from voxblox for now, should go to config
@@ -90,6 +93,7 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
     const bool clear_updated_flag = true;
     esdf_integrator->updateFromTsdfLayer(clear_updated_flag);
   }
+  time_map_update = (std::clock() - start_map_update) / (double)CLOCKS_PER_SEC;
 
   float max_truncation_distance = integrator_config.default_truncation_distance;
   int coarsening_factor = 1;
@@ -104,6 +108,8 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
 
   cartographer::mapping_3d::scan_matching::CeresVoxbloxESDFScanMatcher voxblox_scan_matcher(ceres_scan_matcher_options);
+
+  std::clock_t start_scan_matching = std::clock();
   voxblox_scan_matcher.Match(initial_pose_estimate,
                              initial_pose_estimate,
   {{&scan_cloud, voxblox_esdf}},
@@ -111,6 +117,7 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
                              coarsening_factor,
                              &matched_pose_estimate,
                              &summary);
+  time_scan_matching = (std::clock() - start_scan_matching) / (double)CLOCKS_PER_SEC;
 
 
 

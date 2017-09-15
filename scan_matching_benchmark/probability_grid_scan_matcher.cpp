@@ -29,6 +29,8 @@ ProbabilityGridScanMatcher::ProbabilityGridScanMatcher(ros::NodeHandle &nh, Scan
 void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor::PointCloud& scan_cloud,
                                                      const cartographer::transform::Rigid3d& initial_pose_estimate,
                                                      cartographer::transform::Rigid3d& matched_pose_estimate,
+                                                     double &time_map_update, //seconds
+                                                     double &time_scan_matching, //seconds
                                                      ceres::Solver::Summary& summary) {
   if(config_.multi_res_probability_grid)
     std::cout << "MultiResProbabilityGridScanMatcher\n";
@@ -49,10 +51,12 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
   range_data.returns = scan_cloud;
   range_data.origin = Eigen::Vector3f{0,0,0};
 
-  range_data_inserter.Insert(range_data, &hybrid_grid_high_res);
 
+  std::clock_t start_map_update = std::clock();
+  range_data_inserter.Insert(range_data, &hybrid_grid_high_res);
   if(config_.multi_res_probability_grid)
     range_data_inserter.Insert(range_data, &hybrid_grid_low_res);
+  time_map_update = (std::clock() - start_map_update) / (double)CLOCKS_PER_SEC;
 
   const cartographer::transform::Rigid3d previous_pose;
 
@@ -71,11 +75,13 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
   else
     pointcloud_and_grid = {{&scan_cloud, &hybrid_grid_high_res}};
 
+  std::clock_t start_scan_matching = std::clock();
   scan_matcher.Match(initial_pose_estimate,
                      initial_pose_estimate,
                      pointcloud_and_grid,
                      &matched_pose_estimate,
                      &summary);
+  time_scan_matching = (std::clock() - start_scan_matching) / (double)CLOCKS_PER_SEC;
 
   if(config_.publish_cloud){
     for(auto& p : hybrid_grid_high_res)
