@@ -3,10 +3,8 @@ import pandas as pd
 import os as os
 import numpy as np
 
-
-colors = ['red', 'yellow', 'green', 'blue', 'black']
-
 colors = plt.cm.Set1(np.linspace(0, 1, 9))
+colors_pastel = plt.cm.Pastel1(np.linspace(0, 1, 9))
 
 def process_matching_time(scan_matcher_df):
     initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
@@ -17,7 +15,7 @@ def process_matching_time(scan_matcher_df):
     times = np.reshape(times, (-1, batch_size))
     mean_initial_errors = np.mean(initial_errors, 1)
     mean_times = np.mean(times, 1)
-    var_times = np.var(times, 1)
+    var_times = np.std(times, 1)
     return mean_initial_errors, mean_times, var_times
 
 
@@ -30,7 +28,7 @@ def process_map_update_time(scan_matcher_df):
     times = np.reshape(times, (-1, batch_size))
     mean_initial_errors = np.mean(initial_errors, 1)
     mean_times = np.mean(times, 1)
-    var_times = np.var(times, 1)
+    var_times = np.std(times, 1)
     return mean_initial_errors, mean_times, var_times
 
 
@@ -46,7 +44,7 @@ def process_matching_error(scan_matcher_df):
 
     mean_initial_errors = np.mean(initial_errors, 1)
     mean_matched_errors = np.mean(matched_errors, 1)
-    var_matched_errors = np.var(matched_errors, 1)
+    var_matched_errors = np.std(matched_errors, 1)
     return mean_initial_errors, mean_matched_errors, var_matched_errors
 
 
@@ -59,7 +57,7 @@ def process_solver_iterations(scan_matcher_df):
     times = np.reshape(times, (-1, batch_size))
     mean_initial_errors = np.mean(initial_errors, 1)
     mean_times = np.mean(times, 1)
-    var_times = np.var(times, 1)
+    var_times = np.std(times, 1)
     return mean_initial_errors, mean_times, var_times
 
 
@@ -75,13 +73,18 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
     bars = []
     bar_index = 0
     for data in processed_error_data:
-        bars.append(ax.bar(ind + bar_index * width, data[1], width, color=colors[bar_index]))
+        plt.fill_between(data[0], data[1]-2*data[2], data[1]+2*data[2], color=colors_pastel[bar_index], alpha=0.5)
+        bar_index += 1
+
+    bar_index = 0
+    for data in processed_error_data:
+        bars.append(ax.plot(data[0], data[1], color=colors[bar_index]))
         bar_index += 1
 
     ax.set_ylabel(ylabel)
     ax.set_xlabel('Initial Error')
-    ax.set_xticks(ind + width*(n_sm-1) / 2)
-    ax.set_xticklabels(np.round(processed_error_data[0][0], 2))
+    #ax.set_xticks(ind + width*(n_sm-1) / 2)
+    #ax.set_xticklabels(np.round(processed_error_data[0][0], 2))
 
     legend_handles = []
     for bar in bars:
@@ -89,7 +92,7 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
     ax.legend(legend_handles, scan_matchers)
 
 
-df = pd.read_csv(os.path.expanduser('~') + "/argo/src/scan_matching_benchmark_09-15-2017_15-12-21.csv")
+df = pd.read_csv(os.path.expanduser('~') + "/argo/src/scan_matching_benchmark_09-15-2017_18-11-26.csv")
 scan_matchers = df.scan_matcher.unique()
 print(df.scan_matcher.unique())
 batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)
@@ -97,5 +100,5 @@ batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)
 plot_generic(df, scan_matchers, process_matching_error, 'Matching Error')
 plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
 plot_generic(df, scan_matchers, process_map_update_time, 'Update Time')
-plot_generic(df, scan_matchers, process_matching_time, 'Processing Time')
+plot_generic(df, scan_matchers, process_matching_time, 'Matching Time')
 plt.show()
