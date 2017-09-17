@@ -98,7 +98,7 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  int num_iterations_per_initial_error = 5;
+  int num_iterations_per_initial_error = 100;
   float min_initial_error = 0.0;
   float max_initial_error = 2.6;
   float initial_error_stepsize = 0.1;
