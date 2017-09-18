@@ -36,15 +36,19 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   cartographer::sensor::PointCloud pointcloud;
 
   TestSetGenerator generator(0.02);
-  generator.generateCuboid(pointcloud, 3.0, 3.0, 3.0);
+ // generator.generateCuboid(pointcloud, 3.0, 3.0, 3.0);
+  generator.generateCylinder(pointcloud, 1.5, 3.0);
+  std::cout<<"Finished Generation"<<std::endl;
 
   const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({0.1,0.1,0.1});
   cartographer::transform::Rigid3d matched_pose_estimate;
   ceres::Solver::Summary summary;
   ros::Publisher benchmark_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("benchmark_pointcloud", 1, true);
-
   ros::spinOnce();
-  ScanMatcherConfig scan_matcher_config;/*
+
+  double time_map_update = 0.0;
+  double time_scan_matching = 0.0;
+  ScanMatcherConfig scan_matcher_config;
   ProbabilityGridScanMatcher probability_grid_scan_matcher(nh, scan_matcher_config);
   probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
@@ -57,9 +61,7 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
   std::cout<<"Before "<<initial_pose_estimate<<std::endl;
   std::cout<<"After "<<matched_pose_estimate<<std::endl;
   std::cout<<summary.BriefReport()<<std::endl;
-  scan_matcher_config.multi_res_probability_grid = false;*/
-  double time_map_update = 0.0;
-  double time_scan_matching = 0.0;
+  scan_matcher_config.multi_res_probability_grid = false;
 
   ChiselTSDFScanMatcher chisel_tsdf_scan_matcher(nh, scan_matcher_config);
   chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
@@ -98,9 +100,9 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  int num_iterations_per_initial_error = 100;
+  int num_iterations_per_initial_error = 5;
   float min_initial_error = 0.0;
-  float max_initial_error = 2.6;
+  float max_initial_error = 2.1;
   float initial_error_stepsize = 0.1;
 
   std::ofstream myfile;

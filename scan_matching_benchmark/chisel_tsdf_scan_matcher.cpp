@@ -31,7 +31,6 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
                                                 double &time_map_update, //seconds
                                                 double &time_scan_matching, //seconds
                                                 ceres::Solver::Summary& summary) {
-  std::cout << "CHISEL_TSDF\n";
   chisel::PointCloud cloudOut;
   cloudOut.GetMutablePoints().resize(scan_cloud.size());
 
@@ -51,13 +50,13 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
   chisel_pose.z() = 0.;
 
   chisel::ChiselPtr<chisel::DistVoxel> chisel_tsdf;
-  chisel_tsdf.reset(new chisel::Chisel<chisel::DistVoxel>({8,8,8}, config_.resolution, false, {0,0,0}));
+  chisel_tsdf.reset(new chisel::Chisel<chisel::DistVoxel>({16,16,16}, config_.resolution, false, {0,0,0}));
 
   chisel::ProjectionIntegrator projection_integrator;
   projection_integrator.SetCentroids(chisel_tsdf->GetChunkManager().GetCentroids());
   projection_integrator.SetTruncator(chisel::TruncatorPtr(new chisel::ConstantTruncator(config_.truncation_distance, 1.0)));
   projection_integrator.SetWeighter(chisel::WeighterPtr(new chisel::ConstantWeighter(1)));
-  projection_integrator.SetCarvingDist(0.0);
+  projection_integrator.SetCarvingDist(0.1);
   projection_integrator.SetCarvingEnabled(false);
 
   chisel_tsdf->GetMutableChunkManager().clearIncrementalChanges();
@@ -85,7 +84,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
   chisel_scan_matcher.Match(initial_pose_estimate,
                             initial_pose_estimate,
   {{&scan_cloud, chisel_tsdf}},
-                            config_.truncation_distance*1.2,
+                            config_.truncation_distance*1.5,
                             1,
                             &matched_pose_estimate,
                             &summary);
@@ -93,7 +92,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
 
 
 
-  cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, config_.truncation_distance*1.2);
+  cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, config_.truncation_distance*1.5);
   float min_x = config_.interpolation_map_min_x;
   float min_y = config_.interpolation_map_min_y;
   float min_z = config_.interpolation_map_min_z;
@@ -130,7 +129,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
             valid = true;
           }
         }
-        if(std::abs(sdf) > 1.2 * config_.truncation_distance)
+        if(std::abs(sdf) > 1.5 * config_.truncation_distance)
         {
           sdf = NAN;
           valid = false;

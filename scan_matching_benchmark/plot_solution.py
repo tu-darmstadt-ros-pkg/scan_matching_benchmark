@@ -92,7 +92,7 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
     ax.legend(legend_handles, scan_matchers)
 
 
-df = pd.read_csv(os.path.expanduser('~') + "/argo/src/scan_matching_benchmark_09-15-2017_18-11-26.csv")
+df = pd.read_csv(os.path.expanduser('~') + "/argo_install/src/scan_matching_benchmark_09-18-2017_09-07-29.csv")
 scan_matchers = df.scan_matcher.unique()
 print(df.scan_matcher.unique())
 batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)

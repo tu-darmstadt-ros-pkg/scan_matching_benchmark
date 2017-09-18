@@ -77,3 +77,35 @@ void TestSetGenerator::generateCuboid(cartographer::sensor::PointCloud& cloud, f
     }
   }
 }
+
+
+void TestSetGenerator::generateCylinder(cartographer::sensor::PointCloud& cloud, float radius, float height) {
+  std::random_device r;
+  std::default_random_engine e1(r());
+  std::normal_distribution<float> normal_distribution(0, 0.01);
+
+  cloud.clear();
+  float min_z = -height / 2.0;
+  float max_z = height / 2.0;
+  float angular_resolution = 2.0 * std::asin(resolution_ / (2 * radius));
+
+  for(float x = - radius; x <= radius; x += resolution_) {
+    for(float y = - radius; y <= radius; y += resolution_) {
+      if(x*x+y*y < radius*radius)
+      {
+        float z = min_z;
+        cloud.emplace_back(Eigen::Vector3f(x + normal_distribution(e1), y + normal_distribution(e1), z + normal_distribution(e1)));
+        z = max_z;
+        cloud.emplace_back(Eigen::Vector3f(x + normal_distribution(e1), y + normal_distribution(e1), z + normal_distribution(e1)));
+      }
+    }
+  }
+
+  for(float alpha = 0; alpha < 2.0 * M_PI; alpha += angular_resolution) {
+    for(float z = min_z; z <= max_z; z += resolution_) {
+      float x = std::cos(alpha) * radius;
+      float y = std::sin(alpha) * radius;
+      cloud.emplace_back(Eigen::Vector3f(x + normal_distribution(e1), y + normal_distribution(e1), z + normal_distribution(e1)));
+    }
+  }
+}

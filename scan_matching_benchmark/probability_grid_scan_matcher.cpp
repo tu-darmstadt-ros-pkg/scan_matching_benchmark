@@ -32,10 +32,6 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
                                                      double &time_map_update, //seconds
                                                      double &time_scan_matching, //seconds
                                                      ceres::Solver::Summary& summary) {
-  if(config_.multi_res_probability_grid)
-    std::cout << "MultiResProbabilityGridScanMatcher\n";
-  else
-    std::cout << "ProbabilityGridScanMatcher\n";
 
   map_cloud_.clear();
   interpolated_map_cloud_.clear();

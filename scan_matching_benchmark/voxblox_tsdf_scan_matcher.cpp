@@ -40,7 +40,6 @@ void VoxbloxTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
                                                  double &time_map_update, //seconds
                                                  double &time_scan_matching, //seconds
                                                 ceres::Solver::Summary& summary) {
-  std::cout << "VOXBLOX_TSDF\n";
   voxblox::Transformation T_G_C;
   voxblox::Pointcloud points_C;
   voxblox::Colors colors;
