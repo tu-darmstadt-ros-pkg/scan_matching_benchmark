@@ -16,15 +16,15 @@ public:
   bool publish_cloud = true;
   bool verbose = true;
   bool multi_res_probability_grid = false;
-  float resolution = 0.05;
+  float resolution = 0.2;
   float truncation_distance = 0.4;
   float esdf_distance = 1.0;
-  float interpolation_map_min_x = -3.0;
-  float interpolation_map_min_y = -15.0;
+  float interpolation_map_min_x = -1.1;
+  float interpolation_map_min_y = -1.1;
   float interpolation_map_min_z = 0.0;
-  float interpolation_map_max_x = 3.0;
-  float interpolation_map_max_y = 15.0;
-  float interpolation_map_max_z = 0.01;
+  float interpolation_map_max_x = 1.1;
+  float interpolation_map_max_y = 1.1;
+  float interpolation_map_max_z = 0.0;
 };
 
 class ScanMatcher
@@ -42,8 +42,12 @@ public:
 protected:
   ros::Publisher map_pointcloud_publisher_;
   ros::Publisher interpolated_map_pointcloud_publisher_;
+  ros::Publisher gradient_x_publisher_;
+  ros::Publisher gradient_y_publisher_;
   pcl::PointCloud<pcl::PointXYZI> map_cloud_;
   pcl::PointCloud<pcl::PointXYZI> interpolated_map_cloud_;
+  pcl::PointCloud<pcl::PointXYZI> gradient_x_;
+  pcl::PointCloud<pcl::PointXYZI> gradient_y_;
   ScanMatcherConfig config_;
 };
 

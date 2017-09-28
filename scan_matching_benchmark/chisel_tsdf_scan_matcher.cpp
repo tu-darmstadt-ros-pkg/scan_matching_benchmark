@@ -21,6 +21,8 @@ ChiselTSDFScanMatcher::ChiselTSDFScanMatcher(ros::NodeHandle &nh, ScanMatcherCon
   if(config.publish_cloud) {
     map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("chisel_tsdf_pointcloud", 1, true);
     interpolated_map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("chisel_tsdf_interpolated_pointcloud", 1, true);
+    gradient_x_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("chisel_tsdf_gradient_x", 1, true);
+    gradient_y_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("chisel_tsdf_gradient_y", 1, true);
     ros::spinOnce();
   }
 
@@ -85,7 +87,6 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
                             initial_pose_estimate,
   {{&scan_cloud, chisel_tsdf}},
                             config_.truncation_distance*1.5,
-                            1,
                             &matched_pose_estimate,
                             &summary);
   time_scan_matching = (std::clock() - start_scan_matching) / (double)CLOCKS_PER_SEC;
@@ -145,6 +146,32 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
 
       }
     }
+  }
+
+
+  for(float x = min_x; x <= max_x; x += 0.01) {
+      for(float y = min_y; y <= max_y; y += 0.01) {
+          for(float z = min_z; z <= max_z; z += 0.01) {
+              cartographer::sensor::PointCloud scan_point;
+              scan_point.push_back(Eigen::Vector3f{x,y,z});
+              std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndTSDFPointers> point_and_grid = {{&scan_point, chisel_tsdf}};
+              std::vector<double> gradient;
+              cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
+              chisel_scan_matcher.EvaluateGradient(ground_truth_pose,
+                                            ground_truth_pose,
+                                            point_and_grid,
+                                            1.5 * config_.truncation_distance,
+                                            gradient);
+              pcl::PointXYZI p;
+              p.x = x;
+              p.y = y;
+              p.z = z;
+              p.intensity = gradient[0];
+              gradient_x_.push_back(p);
+              p.intensity = gradient[1];
+              gradient_y_.push_back(p);
+          }
+      }
   }
 
   if(config_.publish_cloud) {

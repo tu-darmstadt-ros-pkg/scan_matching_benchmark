@@ -92,13 +92,13 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
     ax.legend(legend_handles, scan_matchers)
 
 
-df = pd.read_csv(os.path.expanduser('~') + "/argo_install/src/scan_matching_benchmark_09-18-2017_09-07-29.csv")
+df = pd.read_csv(os.path.expanduser('~') + "/thesis/scan_benchmark/interpolation_comparison/2_5m/default_cylinder_low_res.csv")
 scan_matchers = df.scan_matcher.unique()
 print(df.scan_matcher.unique())
 batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)
 
 plot_generic(df, scan_matchers, process_matching_error, 'Matching Error')
-plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
-plot_generic(df, scan_matchers, process_map_update_time, 'Update Time')
-plot_generic(df, scan_matchers, process_matching_time, 'Matching Time')
+#plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
+#plot_generic(df, scan_matchers, process_map_update_time, 'Update Time')
+#plot_generic(df, scan_matchers, process_matching_time, 'Matching Time')
 plt.show()

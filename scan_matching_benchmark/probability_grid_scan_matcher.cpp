@@ -17,10 +17,14 @@ ProbabilityGridScanMatcher::ProbabilityGridScanMatcher(ros::NodeHandle &nh, Scan
     if(config_.multi_res_probability_grid) {
       map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("multi_res_hybrid_grid_pointcloud", 1, true);
       interpolated_map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("multi_res_hybrid_grid_interpolated_pointcloud", 1, true);
+      gradient_x_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("multi_res_hybrid_grid_gradient_x", 1, true);
+      gradient_y_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("multi_res_hybrid_grid_gradient_y", 1, true);
     }
     else {
       map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("hybrid_grid_pointcloud", 1, true);
       interpolated_map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("hybrid_grid_interpolated_pointcloud", 1, true);
+      gradient_x_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("hybrid_grid_gradient_x", 1, true);
+      gradient_y_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("hybrid_grid_gradient_y", 1, true);
     }
     ros::spinOnce();
   }
@@ -92,6 +96,7 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
       map_cloud_.push_back(point);
     }
 
+
     cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid_high_res(hybrid_grid_high_res);
     cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid_low_res(hybrid_grid_low_res);
     float min_x = config_.interpolation_map_min_x;
@@ -116,6 +121,37 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
           p.z = z;
           p.intensity = q;
           interpolated_map_cloud_.push_back(p);
+        }
+      }
+    }
+
+
+    for(float x = min_x; x <= max_x; x += 0.01) {
+      for(float y = min_y; y <= max_y; y += 0.01) {
+        for(float z = min_z; z <= max_z; z += 0.01) {
+          cartographer::sensor::PointCloud scan_point;
+          scan_point.push_back(Eigen::Vector3f{x,y,z});
+          std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndHybridGridPointers> point_and_grid;
+          if(config_.multi_res_probability_grid)
+            point_and_grid = {{&scan_point, &hybrid_grid_high_res},{&scan_point, &hybrid_grid_low_res}};
+          else
+            point_and_grid = {{&scan_point, &hybrid_grid_high_res}};
+
+          std::vector<double> gradient;
+          cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
+          scan_matcher.EvaluateGradient(ground_truth_pose,
+                                       ground_truth_pose,
+                                       point_and_grid,
+                                       gradient);
+          pcl::PointXYZI p;
+          p.x = x;
+          p.y = y;
+          p.z = z;
+          p.intensity = gradient[0];
+          LOG(INFO)<<gradient[0];
+          gradient_x_.push_back(p);
+          p.intensity = gradient[1];
+          gradient_y_.push_back(p);
         }
       }
     }

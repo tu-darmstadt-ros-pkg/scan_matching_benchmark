@@ -30,6 +30,8 @@ VoxbloxESDFScanMatcher::VoxbloxESDFScanMatcher(ros::NodeHandle &nh, ScanMatcherC
   if(config.publish_cloud) {
     map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("voxblox_esdf_pointcloud", 1, true);
     interpolated_map_pointcloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("voxblox_esdf_interpolated_pointcloud", 1, true);
+    gradient_x_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("voxblox_esdf_gradient_x", 1, true);
+    gradient_y_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("voxblox_esdf_gradient_y", 1, true);
     ros::spinOnce();
   }
 
@@ -152,6 +154,31 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
         interpolated_map_cloud_.push_back(p);
       }
     }
+  }
+
+  for(float x = min_x; x <= max_x; x += 0.01) {
+      for(float y = min_y; y <= max_y; y += 0.01) {
+          for(float z = min_z; z <= max_z; z += 0.01) {
+              cartographer::sensor::PointCloud scan_point;
+              scan_point.push_back(Eigen::Vector3f{x,y,z});
+              std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndVoxbloxESDFPointers> point_and_grid = {{&scan_point, voxblox_esdf}};
+              std::vector<double> gradient;
+              cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
+              voxblox_scan_matcher.EvaluateGradient(ground_truth_pose,
+                                            ground_truth_pose,
+                                            point_and_grid,
+                                            config_.truncation_distance,
+                                            gradient);
+              pcl::PointXYZI p;
+              p.x = x;
+              p.y = y;
+              p.z = z;
+              p.intensity = gradient[0];
+              gradient_x_.push_back(p);
+              p.intensity = gradient[1];
+              gradient_y_.push_back(p);
+          }
+      }
   }
 
   if(config_.publish_cloud) {

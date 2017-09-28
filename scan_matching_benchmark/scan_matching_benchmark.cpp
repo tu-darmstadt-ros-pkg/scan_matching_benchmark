@@ -37,7 +37,7 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 
   TestSetGenerator generator(0.02);
  // generator.generateCuboid(pointcloud, 3.0, 3.0, 3.0);
-  generator.generateCylinder(pointcloud, 1.5, 3.0);
+  generator.generateCylinder(pointcloud, 0.7, 0.7);
   std::cout<<"Finished Generation"<<std::endl;
 
   const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({0.1,0.1,0.1});
@@ -102,7 +102,7 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 
   int num_iterations_per_initial_error = 5;
   float min_initial_error = 0.0;
-  float max_initial_error = 2.1;
+  float max_initial_error = 2.6;
   float initial_error_stepsize = 0.1;
 
   std::ofstream myfile;
@@ -133,13 +133,14 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 
   for(float initial_error = min_initial_error; initial_error <= max_initial_error; initial_error += initial_error_stepsize) {
     std::cout<<"Finished "<<(initial_error-min_initial_error)*100.0/(max_initial_error-min_initial_error)<<"%"<<std::endl;
-    float sample_resolution = 0.021832691347;
-    std::string sample_type = "cuboid";
-    float sample_size_x = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_resolution = 0.0242340005934238; //0.0242340005934238 //0.04842340005934238
+    std::string sample_type = "cylinder";
+    float sample_size_x = 1. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     float sample_size_y = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     float sample_size_z = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     TestSetGenerator generator(sample_resolution);
-    generator.generateCuboid(pointcloud, sample_size_x, sample_size_y, sample_size_z);
+    //generator.generateCuboid(pointcloud, sample_size_x, sample_size_y, sample_size_z);
+    generator.generateCylinder(pointcloud, sample_size_x, sample_size_y);
     for(int i_initial_error= 0; i_initial_error < num_iterations_per_initial_error; ++i_initial_error) {
       Eigen::Vector3f initial_error_unscaled({uniform_dist(e1),uniform_dist(e1),uniform_dist(e1)});
       Eigen::Vector3f initial_error_scaled =initial_error*initial_error_unscaled.normalized();
