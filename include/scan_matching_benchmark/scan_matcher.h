@@ -16,7 +16,7 @@ public:
   bool publish_cloud = true;
   bool verbose = true;
   bool multi_res_probability_grid = false;
-  float resolution = 0.2;
+  float resolution = 0.05;
   float truncation_distance = 0.4;
   float esdf_distance = 1.0;
   float interpolation_map_min_x = -1.1;

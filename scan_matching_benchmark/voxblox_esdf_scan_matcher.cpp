@@ -122,66 +122,66 @@ void VoxbloxESDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
 
 
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr tsdf_unfiltered(new pcl::PointCloud<pcl::PointXYZI>);
-  createDistancePointcloudFromEsdfLayer(voxblox_esdf->getEsdfLayer(), tsdf_unfiltered.get());
-  // Create the filtering object
-  pcl::PassThrough<pcl::PointXYZI> pass;
-  pass.setInputCloud (tsdf_unfiltered);
-  pass.setFilterFieldName ("z");
-  pass.setFilterLimits (-0.01, 0.06);
-  //pass.setFilterLimitsNegative (true);
-  pass.filter (map_cloud_);
-  for(auto& p : map_cloud_)
-    p.intensity = std::abs(p.intensity);
+  if(config_.publish_cloud) {
+    pcl::PointCloud<pcl::PointXYZI>::Ptr tsdf_unfiltered(new pcl::PointCloud<pcl::PointXYZI>);
+    createDistancePointcloudFromEsdfLayer(voxblox_esdf->getEsdfLayer(), tsdf_unfiltered.get());
+    // Create the filtering object
+    pcl::PassThrough<pcl::PointXYZI> pass;
+    pass.setInputCloud (tsdf_unfiltered);
+    pass.setFilterFieldName ("z");
+    pass.setFilterLimits (-0.01, 0.06);
+    //pass.setFilterLimitsNegative (true);
+    pass.filter (map_cloud_);
+    for(auto& p : map_cloud_)
+      p.intensity = std::abs(p.intensity);
 
-  cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxESDF interpolated_voxblox_esdf(voxblox_esdf, max_truncation_distance);
-  float min_x = config_.interpolation_map_min_x;
-  float min_y = config_.interpolation_map_min_y;
-  float min_z = config_.interpolation_map_min_z;
-  float max_x = config_.interpolation_map_max_x;
-  float max_y = config_.interpolation_map_max_y;
-  float max_z = config_.interpolation_map_max_z;
-  for(double x = min_x; x <= max_x; x += 0.01) {
-    for(double y = min_y; y <= max_y; y += 0.01) {
-      for(double z = min_z; z <= max_z; z += 0.01) {
-        double q = max_truncation_distance;
-        q = interpolated_voxblox_esdf.GetSDF((double)x,(double)y,(double)z,1);
-        pcl::PointXYZI p;
-        p.x = x;
-        p.y = y;
-        p.z = z;
-        p.intensity = std::abs(q);
-        interpolated_map_cloud_.push_back(p);
+    cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxESDF interpolated_voxblox_esdf(voxblox_esdf, max_truncation_distance);
+    float min_x = config_.interpolation_map_min_x;
+    float min_y = config_.interpolation_map_min_y;
+    float min_z = config_.interpolation_map_min_z;
+    float max_x = config_.interpolation_map_max_x;
+    float max_y = config_.interpolation_map_max_y;
+    float max_z = config_.interpolation_map_max_z;
+    for(double x = min_x; x <= max_x; x += 0.01) {
+      for(double y = min_y; y <= max_y; y += 0.01) {
+        for(double z = min_z; z <= max_z; z += 0.01) {
+          double q = max_truncation_distance;
+          q = interpolated_voxblox_esdf.GetSDF((double)x,(double)y,(double)z,1);
+          pcl::PointXYZI p;
+          p.x = x;
+          p.y = y;
+          p.z = z;
+          p.intensity = std::abs(q);
+          interpolated_map_cloud_.push_back(p);
+        }
       }
     }
-  }
 
-  for(float x = min_x; x <= max_x; x += 0.01) {
+    for(float x = min_x; x <= max_x; x += 0.01) {
       for(float y = min_y; y <= max_y; y += 0.01) {
-          for(float z = min_z; z <= max_z; z += 0.01) {
-              cartographer::sensor::PointCloud scan_point;
-              scan_point.push_back(Eigen::Vector3f{x,y,z});
-              std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndVoxbloxESDFPointers> point_and_grid = {{&scan_point, voxblox_esdf}};
-              std::vector<double> gradient;
-              cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
-              voxblox_scan_matcher.EvaluateGradient(ground_truth_pose,
-                                            ground_truth_pose,
-                                            point_and_grid,
-                                            config_.truncation_distance,
-                                            gradient);
-              pcl::PointXYZI p;
-              p.x = x;
-              p.y = y;
-              p.z = z;
-              p.intensity = gradient[0];
-              gradient_x_.push_back(p);
-              p.intensity = gradient[1];
-              gradient_y_.push_back(p);
-          }
+        for(float z = min_z; z <= max_z; z += 0.01) {
+          cartographer::sensor::PointCloud scan_point;
+          scan_point.push_back(Eigen::Vector3f{x,y,z});
+          std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndVoxbloxESDFPointers> point_and_grid = {{&scan_point, voxblox_esdf}};
+          std::vector<double> gradient;
+          cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
+          voxblox_scan_matcher.EvaluateGradient(ground_truth_pose,
+                                                ground_truth_pose,
+                                                point_and_grid,
+                                                config_.truncation_distance,
+                                                gradient);
+          pcl::PointXYZI p;
+          p.x = x;
+          p.y = y;
+          p.z = z;
+          p.intensity = gradient[0];
+          gradient_x_.push_back(p);
+          p.intensity = gradient[1];
+          gradient_y_.push_back(p);
+        }
       }
-  }
+    }
 
-  if(config_.publish_cloud) {
     publishClouds();
   }
 }

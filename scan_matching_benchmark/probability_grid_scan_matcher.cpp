@@ -119,6 +119,8 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
           p.x = x;
           p.y = y;
           p.z = z;
+          if(std::abs(p.x) < 0.0001)
+              p.z = q;
           p.intensity = q;
           interpolated_map_cloud_.push_back(p);
         }
@@ -148,7 +150,6 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
           p.y = y;
           p.z = z;
           p.intensity = gradient[0];
-          LOG(INFO)<<gradient[0];
           gradient_x_.push_back(p);
           p.intensity = gradient[1];
           gradient_y_.push_back(p);

@@ -93,88 +93,91 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
 
 
 
-  cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, config_.truncation_distance*1.5);
-  float min_x = config_.interpolation_map_min_x;
-  float min_y = config_.interpolation_map_min_y;
-  float min_z = config_.interpolation_map_min_z;
-  float max_x = config_.interpolation_map_max_x;
-  float max_y = config_.interpolation_map_max_y;
-  float max_z = config_.interpolation_map_max_z;
-  for(double x = min_x; x <= max_x; x += 0.01) {
-    for(double y = min_y; y <= max_y; y += 0.01) {
-      for(double z = min_z; z <= max_z; z += 0.01) {
+  if(config_.publish_cloud) {
+    cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, config_.truncation_distance*1.5);
+    float min_x = config_.interpolation_map_min_x;
+    float min_y = config_.interpolation_map_min_y;
+    float min_z = config_.interpolation_map_min_z;
+    float max_x = config_.interpolation_map_max_x;
+    float max_y = config_.interpolation_map_max_y;
+    float max_z = config_.interpolation_map_max_z;
+    for(double x = min_x; x <= max_x; x += 0.01) {
+      for(double y = min_y; y <= max_y; y += 0.01) {
+        for(double z = min_z; z <= max_z; z += 0.01) {
 
-        double q = interpolated_chisel_tsdf.GetSDF((double)x,(double)y,(double)z,1);
-        pcl::PointXYZI p;
-        p.x = x;
-        p.y = y;
-        p.z = z;
-        p.intensity = std::abs(q);
-        interpolated_map_cloud_.push_back(p);
-      }
-    }
-  }
-
-
-  for(double x = min_x; x <= max_x; x += config_.resolution) {
-    for(double y = min_y; y <= max_y; y += config_.resolution) {
-      for(double z = min_z; z <= max_z; z += config_.resolution) {
-        const auto& chunk_manager = chisel_tsdf->GetChunkManager();
-        const chisel::DistVoxel* voxel = chunk_manager.GetDistanceVoxel(chisel::Vec3(x,y,z));
-
-        double sdf = NAN;
-        bool valid = false;
-        if(voxel) {
-          if(voxel->IsValid()) {
-            sdf = voxel->GetSDF();
-            valid = true;
-          }
-        }
-        if(std::abs(sdf) > 1.5 * config_.truncation_distance)
-        {
-          sdf = NAN;
-          valid = false;
-        }
-        if(valid) {
+          double q = interpolated_chisel_tsdf.GetSDF((double)x,(double)y,(double)z,1);
           pcl::PointXYZI p;
           p.x = x;
           p.y = y;
           p.z = z;
-          p.intensity = sdf;
-          map_cloud_.push_back(p);
+          p.intensity = q;
+          interpolated_map_cloud_.push_back(p);
         }
-
       }
     }
-  }
 
 
-  for(float x = min_x; x <= max_x; x += 0.01) {
-      for(float y = min_y; y <= max_y; y += 0.01) {
-          for(float z = min_z; z <= max_z; z += 0.01) {
-              cartographer::sensor::PointCloud scan_point;
-              scan_point.push_back(Eigen::Vector3f{x,y,z});
-              std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndTSDFPointers> point_and_grid = {{&scan_point, chisel_tsdf}};
-              std::vector<double> gradient;
-              cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
-              chisel_scan_matcher.EvaluateGradient(ground_truth_pose,
-                                            ground_truth_pose,
-                                            point_and_grid,
-                                            1.5 * config_.truncation_distance,
-                                            gradient);
-              pcl::PointXYZI p;
-              p.x = x;
-              p.y = y;
-              p.z = z;
-              p.intensity = gradient[0];
-              gradient_x_.push_back(p);
-              p.intensity = gradient[1];
-              gradient_y_.push_back(p);
+    for(double x = min_x; x <= max_x; x += config_.resolution) {
+      for(double y = min_y; y <= max_y; y += config_.resolution) {
+        for(double z = min_z; z <= max_z; z += config_.resolution) {
+          const auto& chunk_manager = chisel_tsdf->GetChunkManager();
+          const chisel::DistVoxel* voxel = chunk_manager.GetDistanceVoxel(chisel::Vec3(x,y,z));
+
+          double sdf = NAN;
+          bool valid = false;
+          if(voxel) {
+            if(voxel->IsValid()) {
+              sdf = voxel->GetSDF();
+              valid = true;
+            }
           }
-      }
-  }
+          if(std::abs(sdf) > 1.5 * config_.truncation_distance)
+          {
+            sdf = NAN;
+            valid = false;
+          }
+          if(valid) {
+            pcl::PointXYZI p;
+            p.x = x;
+            p.y = y;
+            p.z = z;
+            p.intensity = sdf;
+            map_cloud_.push_back(p);
+          }
 
-  if(config_.publish_cloud) {
+        }
+      }
+    }
+
+
+    for(float x = min_x; x <= max_x; x += 0.01) {
+      for(float y = min_y; y <= max_y; y += 0.01) {
+        for(float z = min_z; z <= max_z; z += 0.01) {
+          cartographer::sensor::PointCloud scan_point;
+          scan_point.push_back(Eigen::Vector3f{x,y,z});
+          std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndTSDFPointers> point_and_grid = {{&scan_point, chisel_tsdf}};
+          std::vector<double> gradient;
+          cartographer::transform::Rigid3d ground_truth_pose  = cartographer::transform::Rigid3d::Identity();
+          chisel_scan_matcher.EvaluateGradient(ground_truth_pose,
+                                               ground_truth_pose,
+                                               point_and_grid,
+                                               1.5 * config_.truncation_distance,
+                                               gradient);
+          pcl::PointXYZI p;
+          p.x = x;
+          p.y = y;
+          p.z = z;
+          p.intensity = gradient[0];
+          gradient_x_.push_back(p);
+          /*double fx_0 = std::pow(interpolated_chisel_tsdf.GetSDF((double)x-0.001,(double)y,(double)z,1),2);
+              double fx_1 = std::pow(interpolated_chisel_tsdf.GetSDF((double)x+0.001,(double)y,(double)z,1),2);
+              p.intensity = -2000.0*(fx_0-fx_1);*/
+          p.intensity = gradient[1];
+          gradient_y_.push_back(p);
+        }
+      }
+    }
+
     publishClouds();
   }
 }

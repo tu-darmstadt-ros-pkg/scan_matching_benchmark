@@ -35,9 +35,9 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 {
   cartographer::sensor::PointCloud pointcloud;
 
-  TestSetGenerator generator(0.02);
- // generator.generateCuboid(pointcloud, 3.0, 3.0, 3.0);
-  generator.generateCylinder(pointcloud, 0.7, 0.7);
+  TestSetGenerator generator(0.01213124);
+  //generator.generateCuboid(pointcloud, 1.4, 1.4, 2.0);
+  generator.generateCylinder(pointcloud, 0.7, 1.8);
   std::cout<<"Finished Generation"<<std::endl;
 
   const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({0.1,0.1,0.1});
