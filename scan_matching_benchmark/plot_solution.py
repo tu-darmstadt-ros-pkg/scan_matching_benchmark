@@ -36,9 +36,9 @@ def process_matching_error(scan_matcher_df):
     initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
                              + np.square(scan_matcher_df.initial_error_y.as_matrix())
                              + np.square(scan_matcher_df.initial_error_z.as_matrix()))
-    matched_errors = (np.sqrt(np.square(scan_matcher_df.matched_error_x.as_matrix())
-                              + np.square(scan_matcher_df.matched_error_y.as_matrix())
-                              + np.square(scan_matcher_df.matched_error_z.as_matrix())))
+    matched_errors = np.sqrt(np.square(scan_matcher_df.matched_error_x.as_matrix())
+                             + np.square(scan_matcher_df.matched_error_y.as_matrix())
+                             + np.square(scan_matcher_df.matched_error_z.as_matrix()))
     initial_errors = np.reshape(initial_errors, (-1, batch_size))
     matched_errors = np.reshape(matched_errors, (-1, batch_size))
 
@@ -58,6 +58,18 @@ def process_solver_iterations(scan_matcher_df):
     mean_initial_errors = np.mean(initial_errors, 1)
     mean_times = np.mean(times, 1)
     var_times = np.std(times, 1)
+    return mean_initial_errors, mean_times, var_times
+
+def process_rotation_error(scan_matcher_df):
+    initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_y.as_matrix())
+                             + np.square(scan_matcher_df.initial_error_z.as_matrix()))
+    initial_errors = np.reshape(initial_errors, (-1, batch_size))
+    errors = scan_matcher_df.matched_error_angle.as_matrix()
+    errors = np.reshape(errors, (-1, batch_size))
+    mean_initial_errors = np.mean(initial_errors, 1)
+    mean_times = np.mean(errors, 1)
+    var_times = np.std(errors, 1)
     return mean_initial_errors, mean_times, var_times
 
 
@@ -92,13 +104,14 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
     ax.legend(legend_handles, scan_matchers)
 
 
-df = pd.read_csv(os.path.expanduser('~') + "/thesis/scan_benchmark/interpolation_comparison/2_5m/default_cylinder_low_res.csv")
+df = pd.read_csv(os.path.expanduser('~') + "/thesis/scan_benchmark/scan_matching_benchmark_09-30-2017_14-41-29.csv")
 scan_matchers = df.scan_matcher.unique()
 print(df.scan_matcher.unique())
 batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)
-
+print(batch_size)
 plot_generic(df, scan_matchers, process_matching_error, 'Matching Error')
-#plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
+plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
+#plot_generic(df, scan_matchers, process_rotation_error, 'Cubic3 Rotation Error')
 #plot_generic(df, scan_matchers, process_map_update_time, 'Update Time')
 #plot_generic(df, scan_matchers, process_matching_time, 'Matching Time')
 plt.show()

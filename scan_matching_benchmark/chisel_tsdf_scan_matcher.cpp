@@ -94,7 +94,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
 
 
   if(config_.publish_cloud) {
-    cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, config_.truncation_distance*1.5);
+    cartographer::mapping_3d::scan_matching::InterpolatedTSDF interpolated_chisel_tsdf(chisel_tsdf, config_.truncation_distance*1.5, config_.cubic_interpolation, config_.boundary_extrapolation);
     float min_x = config_.interpolation_map_min_x;
     float min_y = config_.interpolation_map_min_y;
     float min_z = config_.interpolation_map_min_z;
@@ -110,7 +110,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
           p.x = x;
           p.y = y;
           p.z = z;
-          p.intensity = q;
+          p.intensity = std::abs(q);
           interpolated_map_cloud_.push_back(p);
         }
       }

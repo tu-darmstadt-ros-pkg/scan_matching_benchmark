@@ -37,10 +37,12 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 
   TestSetGenerator generator(0.01213124);
   //generator.generateCuboid(pointcloud, 1.4, 1.4, 2.0);
-  generator.generateCylinder(pointcloud, 0.7, 1.8);
+  //generator.generateCylinder(pointcloud, 0.7, 1.8);
+
+  generator.generateHalfCylinderHalfCube(pointcloud, 1.2, 1.2, 2.0);
   std::cout<<"Finished Generation"<<std::endl;
 
-  const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({0.1,0.1,0.1});
+  const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({-0.5,0.0,0.0});
   cartographer::transform::Rigid3d matched_pose_estimate;
   ceres::Solver::Summary summary;
   ros::Publisher benchmark_pointcloud_publisher = nh.advertise<sensor_msgs::PointCloud2>("benchmark_pointcloud", 1, true);
@@ -98,11 +100,10 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 
 BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
-  cartographer::sensor::PointCloud pointcloud;
 
-  int num_iterations_per_initial_error = 5;
+  int num_iterations_per_initial_error = 20;
   float min_initial_error = 0.0;
-  float max_initial_error = 2.6;
+  float max_initial_error = 1.6;
   float initial_error_stepsize = 0.1;
 
   std::ofstream myfile;
@@ -117,14 +118,13 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
   myfile <<"scan_matcher"<<","<<"sample_resolution"<<","
         <<"sample_type"<<","<<"sample_size_x"<<","<<"sample_size_y"<<","<<"sample_size_z"<<","
        <<"grid_resolution"<<","<<"truncation_distance"<<","<<"esdf_distance"<<","
-      <<"initial_error_x"<<","<<"initial_error_y"<<","<<"initial_error_z"<<","
-     <<"matched_error_x"<<","<<"matched_error_y"<<","<<"matched_error_z"
+      <<"initial_error_x"<<","<<"initial_error_y"<<","<<"initial_error_z"<<","<<"initial_error_angle"<<","
+     <<"matched_error_x"<<","<<"matched_error_y"<<","<<"matched_error_z"<<","<<"matched_error_angle"
     <<","<<"solver_iterations"<<","<<"solver_termination_type"<<","
-   <<"time_map_update"<<","<<"time_scan_matching"<<"\n";
-
+   <<"time_map_update"<<","<<"time_scan_matching"<<","<<"boundary_extrapolation"<<","<<"cubic_interpolation"<<"\n";
 
   std::random_device r;
-  std::default_random_engine e1(r());
+  std::default_random_engine e1(M_PI);
   std::uniform_real_distribution<float> uniform_dist(-1, 1);
 
   ScanMatcherConfig scan_matcher_config;
@@ -132,78 +132,101 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 
 
   for(float initial_error = min_initial_error; initial_error <= max_initial_error; initial_error += initial_error_stepsize) {
+    cartographer::sensor::PointCloud pointcloud;
     std::cout<<"Finished "<<(initial_error-min_initial_error)*100.0/(max_initial_error-min_initial_error)<<"%"<<std::endl;
-    float sample_resolution = 0.0242340005934238; //0.0242340005934238 //0.04842340005934238
+    float sample_resolution = 0.01213124;
     std::string sample_type = "cylinder";
-    float sample_size_x = 1. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
-    float sample_size_y = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
-    float sample_size_z = 2. + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_size_x = 1.2 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_size_y = 1.2 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
+    float sample_size_z = 2.0 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     TestSetGenerator generator(sample_resolution);
     //generator.generateCuboid(pointcloud, sample_size_x, sample_size_y, sample_size_z);
-    generator.generateCylinder(pointcloud, sample_size_x, sample_size_y);
+    sample_size_y = sample_size_x;
+    generator.generateHalfCylinderHalfCube(pointcloud, sample_size_x, sample_size_y, sample_size_z);
     for(int i_initial_error= 0; i_initial_error < num_iterations_per_initial_error; ++i_initial_error) {
-      Eigen::Vector3f initial_error_unscaled({uniform_dist(e1),uniform_dist(e1),uniform_dist(e1)});
+      Eigen::Vector3f initial_error_unscaled({uniform_dist(e1),uniform_dist(e1)*0.01,uniform_dist(e1)*0.01});
       Eigen::Vector3f initial_error_scaled =initial_error*initial_error_unscaled.normalized();
       float initial_error_x = initial_error_scaled[0];
       float initial_error_y = initial_error_scaled[1];
       float initial_error_z = initial_error_scaled[2];
-      const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({initial_error_x,initial_error_y,initial_error_z});
+
+      Eigen::Vector3f initial_rotation_axis_unscaled({uniform_dist(e1),uniform_dist(e1),uniform_dist(e1)});
+      Eigen::Vector3f initial_rotation_axis = initial_rotation_axis_unscaled.normalized();
+      float initial_error_angle = uniform_dist(e1)*M_PI;
+      //const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({initial_error_x,initial_error_y,initial_error_z});
+
+      Eigen::Matrix<double, 3, 1> translation({initial_error_x,initial_error_y,initial_error_z});
+      Eigen::Quaternion<double> orientation;
+      orientation.w() = std::cos(initial_error_angle * 0.5);
+      orientation.x() = std::sin(initial_error_angle * 0.5) * std::cos(initial_rotation_axis[0]);
+      orientation.y() = std::sin(initial_error_angle * 0.5) * std::cos(initial_rotation_axis[1]);
+      orientation.z() = std::sin(initial_error_angle * 0.5) * std::cos(initial_rotation_axis[2]);
+      const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation(translation);//(translation, Eigen::Quaternion<double>::Identity());//orientation);
       cartographer::transform::Rigid3d matched_pose_estimate;
       ceres::Solver::Summary summary;
       double time_map_update = 0.0;
       double time_scan_matching = 0.0;
-      ProbabilityGridScanMatcher probability_grid_scan_matcher(nh, scan_matcher_config);
-      probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
-      myfile << std::setprecision (15)<<"ProbabilityGridScanMatcher"<<","<<sample_resolution<<","
-            <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
-           <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
-          <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
-         <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
-          <<","<<time_map_update<<","<<time_scan_matching<<"\n";
+      /*
+        bool boundary_extrapolation = false;
+        bool cubic_interpolation = false;*/
+      for (bool boundary_extrapolation : { false, true }) {
+        for (bool cubic_interpolation : { false, true }) {
+          scan_matcher_config.boundary_extrapolation = boundary_extrapolation;
+          scan_matcher_config.cubic_interpolation = cubic_interpolation;
 
-      scan_matcher_config.multi_res_probability_grid = true;
-      ProbabilityGridScanMatcher probability_grid_scan_matcher_multi_res(nh, scan_matcher_config);
-      probability_grid_scan_matcher_multi_res.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
-      myfile << std::setprecision (15)<<"ProbabilityGridScanMatcherMultiRes"<<","<<sample_resolution<<","
-            <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
-           <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
-          <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
-         <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
-       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
-      scan_matcher_config.multi_res_probability_grid = false;
+          ProbabilityGridScanMatcher probability_grid_scan_matcher(nh, scan_matcher_config);
+          probability_grid_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
+          myfile << std::setprecision (15)<<"ProbabilityGridScanMatcher"<<","<<sample_resolution<<","
+                 <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
+                <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
+               <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","<<initial_error_angle<<","
+              <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]<<","<<matched_pose_estimate.rotation().angularDistance(Eigen::Quaterniond::Identity())
+             <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+            <<","<<time_map_update<<","<<time_scan_matching<<","<<scan_matcher_config.boundary_extrapolation<<","<<scan_matcher_config.cubic_interpolation<<"\n";
 
-      ChiselTSDFScanMatcher chisel_tsdf_scan_matcher(nh, scan_matcher_config);
-      chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
-      myfile << std::setprecision (15)<<"ChiselTSDFScanMatcher"<<","<<sample_resolution<<","
-            <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
-           <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
-          <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
-         <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
-       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
+          scan_matcher_config.multi_res_probability_grid = true;
+          ProbabilityGridScanMatcher probability_grid_scan_matcher_multi_res(nh, scan_matcher_config);
+          probability_grid_scan_matcher_multi_res.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
+          myfile << std::setprecision (15)<<"ProbabilityGridScanMatcherMultiRes"<<","<<sample_resolution<<","
+                 <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
+                <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
+               <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","<<initial_error_angle<<","
+              <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]<<","<<matched_pose_estimate.rotation().angularDistance(Eigen::Quaterniond::Identity())
+             <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+            <<","<<time_map_update<<","<<time_scan_matching<<","<<scan_matcher_config.boundary_extrapolation<<","<<scan_matcher_config.cubic_interpolation<<"\n";
+          scan_matcher_config.multi_res_probability_grid = false;
 
-      VoxbloxTSDFScanMatcher voxblox_tsdf_scan_matcher(nh, scan_matcher_config);
-      voxblox_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
-      myfile << std::setprecision (15)<<"VoxbloxTSDFScanMatcher"<<","<<sample_resolution<<","
-            <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
-           <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
-          <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
-         <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
-       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
+          ChiselTSDFScanMatcher chisel_tsdf_scan_matcher(nh, scan_matcher_config);
+          chisel_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
+          myfile << std::setprecision (15)<<"ChiselTSDFScanMatcher"<<","<<sample_resolution<<","
+                 <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
+                <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
+               <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","<<initial_error_angle<<","
+              <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]<<","<<matched_pose_estimate.rotation().angularDistance(Eigen::Quaterniond::Identity())
+             <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+            <<","<<time_map_update<<","<<time_scan_matching<<","<<scan_matcher_config.boundary_extrapolation<<","<<scan_matcher_config.cubic_interpolation<<"\n";
 
-      VoxbloxESDFScanMatcher voxblox_esdf_scan_matcher(nh, scan_matcher_config);
-      voxblox_esdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
-      myfile << std::setprecision (15)<<"VoxbloxESDFScanMatcher"<<","<<sample_resolution<<","
-            <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
-           <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
-          <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","
-         <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]
-        <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
-       <<","<<time_map_update<<","<<time_scan_matching<<"\n";
+          VoxbloxTSDFScanMatcher voxblox_tsdf_scan_matcher(nh, scan_matcher_config);
+          voxblox_tsdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
+          myfile << std::setprecision (15)<<"VoxbloxTSDFScanMatcher"<<","<<sample_resolution<<","
+                 <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
+                <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
+               <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","<<initial_error_angle<<","
+              <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]<<","<<matched_pose_estimate.rotation().angularDistance(Eigen::Quaterniond::Identity())
+             <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+            <<","<<time_map_update<<","<<time_scan_matching<<","<<scan_matcher_config.boundary_extrapolation<<","<<scan_matcher_config.cubic_interpolation<<"\n";
 
+          VoxbloxESDFScanMatcher voxblox_esdf_scan_matcher(nh, scan_matcher_config);
+          voxblox_esdf_scan_matcher.evaluateScanMatcher(pointcloud, initial_pose_estimate, matched_pose_estimate, time_map_update, time_scan_matching, summary);
+          myfile << std::setprecision (15)<<"VoxbloxESDFScanMatcher"<<","<<sample_resolution<<","
+                 <<sample_type<<","<<sample_size_x<<","<<sample_size_y<<","<<sample_size_z<<","
+                <<scan_matcher_config.resolution<<","<<scan_matcher_config.truncation_distance<<","<<scan_matcher_config.esdf_distance<<","
+               <<initial_error_x<<","<<initial_error_y<<","<<initial_error_z<<","<<initial_error_angle<<","
+              <<matched_pose_estimate.translation()[0]<<","<<matched_pose_estimate.translation()[1]<<","<<matched_pose_estimate.translation()[2]<<","<<matched_pose_estimate.rotation().angularDistance(Eigen::Quaterniond::Identity())
+             <<","<<summary.num_successful_steps+summary.num_unsuccessful_steps<<","<<ceres::TerminationTypeToString(summary.termination_type)
+            <<","<<time_map_update<<","<<time_scan_matching<<","<<scan_matcher_config.boundary_extrapolation<<","<<scan_matcher_config.cubic_interpolation<<"\n";
+        }
+      }
     }
   }
 

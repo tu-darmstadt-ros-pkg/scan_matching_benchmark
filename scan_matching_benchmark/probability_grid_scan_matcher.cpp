@@ -44,7 +44,7 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
   cartographer::mapping_3d::proto::RangeDataInserterOptions range_data_inserter_options;
   range_data_inserter_options.set_hit_probability(0.56);
   range_data_inserter_options.set_miss_probability(0.44);
-  range_data_inserter_options.set_num_free_space_voxels(5);
+  range_data_inserter_options.set_num_free_space_voxels(50);
   cartographer::mapping_3d::RangeDataInserter range_data_inserter(range_data_inserter_options);
 
   cartographer::sensor::RangeData range_data;
@@ -97,8 +97,8 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
     }
 
 
-    cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid_high_res(hybrid_grid_high_res);
-    cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid_low_res(hybrid_grid_low_res);
+    cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid_high_res(hybrid_grid_high_res, config_.cubic_interpolation);
+    cartographer::mapping_3d::scan_matching::InterpolatedGrid interpolated_grid_low_res(hybrid_grid_low_res, config_.cubic_interpolation);
     float min_x = config_.interpolation_map_min_x;
     float min_y = config_.interpolation_map_min_y;
     float min_z = config_.interpolation_map_min_z;
@@ -119,8 +119,6 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
           p.x = x;
           p.y = y;
           p.z = z;
-          if(std::abs(p.x) < 0.0001)
-              p.z = q;
           p.intensity = q;
           interpolated_map_cloud_.push_back(p);
         }

@@ -25,6 +25,8 @@ public:
   float interpolation_map_max_x = 1.1;
   float interpolation_map_max_y = 1.1;
   float interpolation_map_max_z = 0.0;
+  bool boundary_extrapolation = false;
+  bool cubic_interpolation = false;
 };
 
 class ScanMatcher

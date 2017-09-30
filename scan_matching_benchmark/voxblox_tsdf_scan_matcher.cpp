@@ -106,7 +106,7 @@ void VoxbloxTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poi
     for(auto& p : map_cloud_)
       p.intensity = std::abs(p.intensity);
 
-    cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxTSDF interpolated_voxblox_tsdf(voxblox_tsdf, max_truncation_distance);
+    cartographer::mapping_3d::scan_matching::InterpolatedVoxbloxTSDF interpolated_voxblox_tsdf(voxblox_tsdf, max_truncation_distance, config_.cubic_interpolation, config_.boundary_extrapolation);
     float min_x = config_.interpolation_map_min_x;
     float min_y = config_.interpolation_map_min_y;
     float min_z = config_.interpolation_map_min_z;
