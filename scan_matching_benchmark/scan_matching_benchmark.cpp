@@ -101,7 +101,7 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
 
-  int num_iterations_per_initial_error = 20;
+  int num_iterations_per_initial_error = 10;
   float min_initial_error = 0.0;
   float max_initial_error = 1.6;
   float initial_error_stepsize = 0.1;
@@ -144,7 +144,7 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
     sample_size_y = sample_size_x;
     generator.generateHalfCylinderHalfCube(pointcloud, sample_size_x, sample_size_y, sample_size_z);
     for(int i_initial_error= 0; i_initial_error < num_iterations_per_initial_error; ++i_initial_error) {
-      Eigen::Vector3f initial_error_unscaled({uniform_dist(e1),uniform_dist(e1)*0.01,uniform_dist(e1)*0.01});
+      Eigen::Vector3f initial_error_unscaled({uniform_dist(e1),uniform_dist(e1),uniform_dist(e1)});
       Eigen::Vector3f initial_error_scaled =initial_error*initial_error_unscaled.normalized();
       float initial_error_x = initial_error_scaled[0];
       float initial_error_y = initial_error_scaled[1];

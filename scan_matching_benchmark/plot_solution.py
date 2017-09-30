@@ -60,6 +60,7 @@ def process_solver_iterations(scan_matcher_df):
     var_times = np.std(times, 1)
     return mean_initial_errors, mean_times, var_times
 
+
 def process_rotation_error(scan_matcher_df):
     initial_errors = np.sqrt(np.square(scan_matcher_df.initial_error_x.as_matrix())
                              + np.square(scan_matcher_df.initial_error_y.as_matrix())
@@ -73,7 +74,7 @@ def process_rotation_error(scan_matcher_df):
     return mean_initial_errors, mean_times, var_times
 
 
-def plot_generic(df, scan_matchers, processing_function, ylabel):
+def plot_generic(df, scan_matchers, processing_function, ylabel, title):
     processed_error_data = []
     n_sm = len(scan_matchers)
     for scan_matcher in scan_matchers:
@@ -95,8 +96,7 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
 
     ax.set_ylabel(ylabel)
     ax.set_xlabel('Initial Error')
-    #ax.set_xticks(ind + width*(n_sm-1) / 2)
-    #ax.set_xticklabels(np.round(processed_error_data[0][0], 2))
+    plt.title(title)
 
     legend_handles = []
     for bar in bars:
@@ -104,14 +104,22 @@ def plot_generic(df, scan_matchers, processing_function, ylabel):
     ax.legend(legend_handles, scan_matchers)
 
 
-df = pd.read_csv(os.path.expanduser('~') + "/thesis/scan_benchmark/scan_matching_benchmark_09-30-2017_14-41-29.csv")
+local_path = "/thesis/scan_benchmark/scan_matching_benchmark_09-30-2017_19-25-55.csv"
+df = pd.read_csv(os.path.expanduser('~') + local_path)
 scan_matchers = df.scan_matcher.unique()
 print(df.scan_matcher.unique())
-batch_size = int((df.initial_error_x == 0).astype(int).sum()/scan_matchers.size)
+batch_size = int((df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
 print(batch_size)
-plot_generic(df, scan_matchers, process_matching_error, 'Matching Error')
-plot_generic(df, scan_matchers, process_solver_iterations, 'Solver Iterations')
-#plot_generic(df, scan_matchers, process_rotation_error, 'Cubic3 Rotation Error')
-#plot_generic(df, scan_matchers, process_map_update_time, 'Update Time')
-#plot_generic(df, scan_matchers, process_matching_time, 'Matching Time')
+for boundary_extrapolation in [True, False]:
+    for cubic_interpolation in [True, False]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+
+        plot_generic(filtered_df, scan_matchers, process_matching_error, 'Matching Error', 'Matching Error' + boundary_title + interpolation_title)
+        #plot_generic(filtered_df, scan_matchers, process_solver_iterations, 'Solver Iterations', 'Solver Iterations' + boundary_title + interpolation_title)
+        #plot_generic(filtered_df, scan_matchers, process_rotation_error, 'Rotation Error', 'Rotation Error' + boundary_title + interpolation_title)
+
 plt.show()

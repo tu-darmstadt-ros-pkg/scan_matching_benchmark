@@ -81,7 +81,7 @@ void ChiselTSDFScanMatcher::evaluateScanMatcher(const cartographer::sensor::Poin
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
 
 
-  cartographer::mapping_3d::scan_matching::CeresTSDFScanMatcher chisel_scan_matcher(ceres_scan_matcher_options);
+  cartographer::mapping_3d::scan_matching::CeresTSDFScanMatcher chisel_scan_matcher(ceres_scan_matcher_options, config_.cubic_interpolation, config_.boundary_extrapolation);
   std::clock_t start_scan_matching = std::clock();
   chisel_scan_matcher.Match(initial_pose_estimate,
                             initial_pose_estimate,
