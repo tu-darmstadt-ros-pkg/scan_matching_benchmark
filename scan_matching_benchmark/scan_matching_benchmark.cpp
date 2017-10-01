@@ -101,10 +101,10 @@ ScanMatchingBenchmark::ScanMatchingBenchmark(ros::NodeHandle &nh)
 BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
 {
 
-  int num_iterations_per_initial_error = 10;
+  int num_iterations_per_initial_error = 5;
   float min_initial_error = 0.0;
-  float max_initial_error = 1.6;
-  float initial_error_stepsize = 0.1;
+  float max_initial_error = 0.8;
+  float initial_error_stepsize = 0.05;
 
   std::ofstream myfile;
   std::string log_file_path;
@@ -135,7 +135,7 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
     cartographer::sensor::PointCloud pointcloud;
     std::cout<<"Finished "<<(initial_error-min_initial_error)*100.0/(max_initial_error-min_initial_error)<<"%"<<std::endl;
     float sample_resolution = 0.01213124;
-    std::string sample_type = "cylinder";
+    std::string sample_type = "half_cylinder_hlaf_cuboid";
     float sample_size_x = 1.2 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     float sample_size_y = 1.2 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
     float sample_size_z = 2.0 + scan_matcher_config.resolution * uniform_dist(e1) * 0.5;
@@ -145,23 +145,24 @@ BatchScanMatchingBenchmark::BatchScanMatchingBenchmark(ros::NodeHandle &nh)
     generator.generateHalfCylinderHalfCube(pointcloud, sample_size_x, sample_size_y, sample_size_z);
     for(int i_initial_error= 0; i_initial_error < num_iterations_per_initial_error; ++i_initial_error) {
       Eigen::Vector3f initial_error_unscaled({uniform_dist(e1),uniform_dist(e1),uniform_dist(e1)});
-      Eigen::Vector3f initial_error_scaled =initial_error*initial_error_unscaled.normalized();
-      float initial_error_x = initial_error_scaled[0];
-      float initial_error_y = initial_error_scaled[1];
-      float initial_error_z = initial_error_scaled[2];
+      Eigen::Vector3f initial_error_scaled = initial_error*initial_error_unscaled.normalized();
+      float initial_error_x = 0;//initial_error_scaled[0];
+      float initial_error_y = 0;//initial_error_scaled[1];
+      float initial_error_z = 0;//initial_error_scaled[2];
 
       Eigen::Vector3f initial_rotation_axis_unscaled({uniform_dist(e1),uniform_dist(e1),uniform_dist(e1)});
       Eigen::Vector3f initial_rotation_axis = initial_rotation_axis_unscaled.normalized();
-      float initial_error_angle = uniform_dist(e1)*M_PI;
+      float initial_error_angle = initial_error*M_PI;
       //const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation({initial_error_x,initial_error_y,initial_error_z});
 
       Eigen::Matrix<double, 3, 1> translation({initial_error_x,initial_error_y,initial_error_z});
       Eigen::Quaternion<double> orientation;
       orientation.w() = std::cos(initial_error_angle * 0.5);
-      orientation.x() = std::sin(initial_error_angle * 0.5) * std::cos(initial_rotation_axis[0]);
-      orientation.y() = std::sin(initial_error_angle * 0.5) * std::cos(initial_rotation_axis[1]);
-      orientation.z() = std::sin(initial_error_angle * 0.5) * std::cos(initial_rotation_axis[2]);
-      const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d::Translation(translation);//(translation, Eigen::Quaternion<double>::Identity());//orientation);
+      orientation.x() = std::sin(initial_error_angle * 0.5) * initial_rotation_axis[0];
+      orientation.y() = std::sin(initial_error_angle * 0.5) * initial_rotation_axis[1];
+      orientation.z() = std::sin(initial_error_angle * 0.5) * initial_rotation_axis[2];
+      LOG(INFO)<<"quat "<<orientation.w()<<" "<<orientation.x()<<" "<<orientation.y()<<" "<<orientation.z();
+      const cartographer::transform::Rigid3d initial_pose_estimate = cartographer::transform::Rigid3d(translation, orientation);
       cartographer::transform::Rigid3d matched_pose_estimate;
       ceres::Solver::Summary summary;
       double time_map_update = 0.0;
