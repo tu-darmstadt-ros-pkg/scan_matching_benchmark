@@ -1,5 +1,11 @@
 #include "scan_matching_benchmark/test_set_generator.h"
 
+#include <iostream>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <boost/filesystem.hpp>
+#include <cartographer/sensor/voxel_filter.h>
+
 TestSetGenerator::TestSetGenerator():
   resolution_(0.1) {}
 
@@ -124,7 +130,7 @@ void TestSetGenerator::generateHalfCylinderHalfCube(cartographer::sensor::PointC
   float max_y = size_y / 2.0;
   float min_z = -size_z / 2.0;
   float max_z = size_z / 2.0;
-/*
+
   //Half Cube x=>0
   for(float x = 0; x <= max_x; x += resolution_) {
     for(float y = min_y; y <= max_y; y += resolution_) {
@@ -149,12 +155,12 @@ void TestSetGenerator::generateHalfCylinderHalfCube(cartographer::sensor::PointC
       cloud.emplace_back(Eigen::Vector3f(x + normal_distribution(e1), y + normal_distribution(e1), z + normal_distribution(e1)));
     }
   }
-*/
+
 
   //Half Cylinder x<=0
   float angular_resolution = 2.0 * std::asin(resolution_ / (size_x));
   float radius = 0.5 * size_x;
-/*
+
   for(float x = - radius; x < 0; x += resolution_) {
     for(float y = - radius; y <= radius; y += resolution_) {
       if(x*x+y*y < radius*radius)
@@ -165,7 +171,7 @@ void TestSetGenerator::generateHalfCylinderHalfCube(cartographer::sensor::PointC
         cloud.emplace_back(Eigen::Vector3f(x + normal_distribution(e1), y + normal_distribution(e1), z + normal_distribution(e1)));
       }
     }
-  }*/
+  }
 
   for(float alpha = 0; alpha < 2.0 * M_PI; alpha += angular_resolution) {
     for(float z = min_z; z <= max_z; z += resolution_) {
@@ -175,5 +181,71 @@ void TestSetGenerator::generateHalfCylinderHalfCube(cartographer::sensor::PointC
         cloud.emplace_back(Eigen::Vector3f(x + normal_distribution(e1), y + normal_distribution(e1), z + normal_distribution(e1)));
     }
   }
+
+}
+
+void loadPCD(cartographer::sensor::PointCloud& cloud, std::string dir)
+{
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> (/*"/home/kevin/Downloads/gas_station_benchmark/423.043000000.pcd"*/dir, *pcl_cloud) == -1) //* load the file
+  {
+    PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+    return ;
+  }
+  std::cout << "Loaded "
+            << pcl_cloud->width * pcl_cloud->height
+            << " data points from " << dir<< std::endl;
+  for (size_t i = 0; i < pcl_cloud->points.size (); ++i) {
+    cloud.push_back(Eigen::Vector3f({pcl_cloud->points[i].x, pcl_cloud->points[i].y, pcl_cloud->points[i].z}));
+  }
+
+
+}
+
+void TestSetGenerator::loadPCDDir(cartographer::sensor::PointCloud& cloud, std::string dir) {
+  cloud.clear();
+
+  cartographer::sensor::PointCloud cloud_unfiltered;
+  boost::filesystem::path p ("/home/kevin/Downloads/gas_station_benchmark/");
+
+  try
+  {
+    if (boost::filesystem::exists(p))    // does p actually exist?
+    {
+      if (boost::filesystem::is_regular_file(p))        // is p a regular file?
+        std::cout << p << " size is " << boost::filesystem::file_size(p) << '\n';
+
+      else if (boost::filesystem::is_directory(p))      // is p a directory?
+      {
+        std::cout << "Reading files from " << p;
+        for(boost::filesystem::directory_iterator it(p);
+            it != boost::filesystem::directory_iterator();
+            it++)
+        {
+          if (it->path().extension() == ".pcd") {
+            loadPCD(cloud_unfiltered, it->path().string());
+          }
+        }
+      }
+
+      else
+        std::cout << p << " exists, but is neither a regular file nor a directory\n";
+    }
+    else
+      std::cout << p << " does not exist\n";
+  }
+
+  catch (const boost::filesystem::filesystem_error& ex)
+  {
+    std::cout << ex.what() << '\n';
+  }
+
+  cloud = cartographer::sensor::VoxelFiltered(cloud_unfiltered, 0.05);
+  std::cout << "filter: " << cloud_unfiltered.size() <<" "<< cloud.size()<<std::endl;;
+
+
+
+  // return (0);
 
 }

@@ -70,6 +70,7 @@ void ProbabilityGridScanMatcher::evaluateScanMatcher(const cartographer::sensor:
   ceres_scan_matcher_options.mutable_ceres_solver_options()->set_num_threads(1);
   cartographer::mapping_3d::scan_matching::CeresScanMatcher scan_matcher(ceres_scan_matcher_options, config_.cubic_interpolation);
   std::vector<cartographer::mapping_3d::scan_matching::PointCloudAndHybridGridPointers> pointcloud_and_grid;
+
   if(config_.multi_res_probability_grid)
     pointcloud_and_grid = {{&scan_cloud, &hybrid_grid_high_res},{&scan_cloud, &hybrid_grid_low_res}};
   else

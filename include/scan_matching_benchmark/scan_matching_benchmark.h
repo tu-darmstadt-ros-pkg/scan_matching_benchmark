@@ -9,6 +9,8 @@
 #include <chrono>
 
 
+float computeReprojectionError(const cartographer::sensor::PointCloud& scan_cloud,
+                               const cartographer::transform::Rigid3d& pose_estimate);
 
 class ScanMatchingBenchmark
 {
@@ -23,6 +25,15 @@ class BatchScanMatchingBenchmark
 {
 public:
   BatchScanMatchingBenchmark(ros::NodeHandle &nh);
+
+private:
+
+};
+
+class BatchScanMatchingBenchmarkFromFile
+{
+public:
+  BatchScanMatchingBenchmarkFromFile(ros::NodeHandle &nh, std::string dir);
 
 private:
 

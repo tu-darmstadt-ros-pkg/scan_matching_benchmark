@@ -27,3 +27,6 @@ void ScanMatcher::publishClouds() {
   gradient_y_msg.header.frame_id = "world";
   gradient_y_publisher_.publish(gradient_y_msg);
 }
+
+
+
