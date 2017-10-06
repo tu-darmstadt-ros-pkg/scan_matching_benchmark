@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os as os
 import numpy as np
+from matplotlib2tikz import save as tikz_save
 
 colors = plt.cm.Set1(np.linspace(0, 1, 9))
 colors_pastel = plt.cm.Pastel1(np.linspace(0, 1, 9))
@@ -159,14 +160,14 @@ x_axis = 'Translation[m]'
 #x_axis = 'Rotation[rad]'
 #plotting
 for boundary_extrapolation in [True]:
-    for cubic_interpolation in [True, False]:
+    for cubic_interpolation in [True]:
         filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
         interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
         #plot_generic(filtered_df, scan_matchers, process_solver_iterations, 'Solver Iterations', 'Solver Iterations' + interpolation_title + boundary_title)
-        #plot_generic(filtered_df, scan_matchers, process_reprojection_error, 'Avg. Reprojection Error[m]', 'Reprojection Error' + interpolation_title + boundary_title)
+        plot_generic(filtered_df, scan_matchers, process_reprojection_error, 'Avg. Reprojection Error[m]', 'Reprojection Error' + interpolation_title + boundary_title)
         #plot_generic(filtered_df, scan_matchers, process_matching_time, 'Avg. Matching time[s]', 'Matching time' + interpolation_title + boundary_title)
         #plot_generic(filtered_df, scan_matchers, process_map_update_time, 'Map Update time', 'Map Update time' + interpolation_title)
 
@@ -240,5 +241,7 @@ for boundary_extrapolation in [True]:
     for data_index in range(0, len(scan_matchers)):
         data_mean_x = ((data_linear[data_index][1]-data_cubic[data_index][1])/data_cubic[data_index][1])[0:11]
         print(scan_matchers[data_index], np.mean(data_mean_x), np.std(data_mean_x))
+
+tikz_save('test.tex')
 
 plt.show()
