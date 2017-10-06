@@ -118,22 +118,37 @@ def plot_generic(df, scan_matchers, processing_function, ylabel, title):
     for data in processed_error_data:
         plt.fill_between(data[0], data[1]-2*data[2], data[1]+2*data[2], color=colors_pastel[bar_index], alpha=0.5)
         bar_index += 1
-
     bar_index = 0
     for data in processed_error_data:
         bars.append(ax.plot(data[0], data[1], color=colors[bar_index]))
         bar_index += 1
-
     ax.set_ylabel(ylabel)
     ax.set_xlabel('Initial ' + x_axis + ' Error')
     plt.title(title)
-
     legend_handles = []
     for bar in bars:
         legend_handles.append(bar[0])
     ax.legend(legend_handles, scan_matchers)
 
-file_name = 'scan_matching_benchmark_10-05-2017_10-28-50.csv'
+def compute_error_generic(df, scan_matchers, processing_function, processed_error_data):
+    #processed_error_data = []
+    n_sm = len(scan_matchers)
+    for scan_matcher in scan_matchers:
+        processed_error_data.append(processing_function(df[df.scan_matcher == scan_matcher]))
+    N = processed_error_data[0][0].size
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.8 / n_sm  # the width of the bars
+    bars = []
+    bar_index = 0
+    for data in processed_error_data:
+        #plt.fill_between(data[0], data[1]-2*data[2], data[1]+2*data[2], color=colors_pastel[bar_index], alpha=0.5)
+        bar_index += 1
+    bar_index = 0
+    for data in processed_error_data:
+        #bars.append(ax.plot(data[0], data[1], color=colors[bar_index]))
+        bar_index += 1
+
+file_name = 'gas_station_benchmark_translation_only.csv'
 local_path = "/thesis/scan_benchmark/" + file_name
 df = pd.read_csv(os.path.expanduser('~') + local_path)
 scan_matchers = df.scan_matcher.unique()
@@ -142,6 +157,7 @@ batch_size = int((df.initial_error_x == 0).astype(int).sum() / scan_matchers.siz
 print(batch_size)
 x_axis = 'Translation[m]'
 #x_axis = 'Rotation[rad]'
+#plotting
 for boundary_extrapolation in [True]:
     for cubic_interpolation in [True, False]:
         filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
@@ -149,12 +165,80 @@ for boundary_extrapolation in [True]:
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
         interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
-
-        #plot_generic(filtered_df, scan_matchers, process_matching_error, 'Matching Error', 'Matching Error' + interpolation_title)
-        plot_generic(filtered_df, scan_matchers, process_solver_iterations, 'Solver Iterations', 'Solver Iterations' + interpolation_title + boundary_title)
-        #plot_generic(filtered_df, scan_matchers, process_rotation_error, 'Rotation Error', 'Rotation Error' + interpolation_title)
-        plot_generic(filtered_df, scan_matchers, process_reprojection_error, 'Avg. Reprojection Error[m]', 'Reprojection Error' + interpolation_title + boundary_title)
+        #plot_generic(filtered_df, scan_matchers, process_solver_iterations, 'Solver Iterations', 'Solver Iterations' + interpolation_title + boundary_title)
+        #plot_generic(filtered_df, scan_matchers, process_reprojection_error, 'Avg. Reprojection Error[m]', 'Reprojection Error' + interpolation_title + boundary_title)
         #plot_generic(filtered_df, scan_matchers, process_matching_time, 'Avg. Matching time[s]', 'Matching time' + interpolation_title + boundary_title)
         #plot_generic(filtered_df, scan_matchers, process_map_update_time, 'Map Update time', 'Map Update time' + interpolation_title)
+
+#compute error metrics
+
+print('iterations')
+for boundary_extrapolation in [True]:
+    data_linear = []
+    data_cubic = []
+    for cubic_interpolation in [False]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        compute_error_generic(filtered_df, scan_matchers, process_solver_iterations, data_linear)
+    for cubic_interpolation in [True]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        compute_error_generic(filtered_df, scan_matchers, process_solver_iterations, data_cubic)
+
+    for data_index in range(0, len(scan_matchers)):
+        data_mean_x = ((data_linear[data_index][1]-data_cubic[data_index][1])/data_cubic[data_index][1])[0:11]
+        print(scan_matchers[data_index], np.mean(data_mean_x), np.std(data_mean_x))
+
+print('matching_time')
+for boundary_extrapolation in [True]:
+    data_linear = []
+    data_cubic = []
+    for cubic_interpolation in [False]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        compute_error_generic(filtered_df, scan_matchers, process_matching_time, data_linear)
+    for cubic_interpolation in [True]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        compute_error_generic(filtered_df, scan_matchers, process_matching_time, data_cubic)
+
+    for data_index in range(0, len(scan_matchers)):
+        data_mean_x = ((data_linear[data_index][1] - data_cubic[data_index][1]) / data_cubic[data_index][1])[0:11]
+        print(scan_matchers[data_index], np.mean(data_mean_x), np.std(data_mean_x))
+
+print('reprojection_error')
+for boundary_extrapolation in [True]:
+    data_linear = []
+    data_cubic = []
+    for cubic_interpolation in [False]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        compute_error_generic(filtered_df, scan_matchers, process_reprojection_error, data_linear)
+    for cubic_interpolation in [True]:
+        filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
+        filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
+        batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
+        boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
+        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        compute_error_generic(filtered_df, scan_matchers, process_reprojection_error, data_cubic)
+
+    for data_index in range(0, len(scan_matchers)):
+        data_mean_x = ((data_linear[data_index][1]-data_cubic[data_index][1])/data_cubic[data_index][1])[0:11]
+        print(scan_matchers[data_index], np.mean(data_mean_x), np.std(data_mean_x))
 
 plt.show()
