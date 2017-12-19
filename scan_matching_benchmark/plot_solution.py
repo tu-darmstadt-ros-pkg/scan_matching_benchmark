@@ -159,17 +159,23 @@ print(batch_size)
 x_axis = 'Translation[m]'
 #x_axis = 'Rotation[rad]'
 #plotting
-for boundary_extrapolation in [True]:
-    for cubic_interpolation in [True]:
+for boundary_extrapolation in [True, False]:
+    for cubic_interpolation in [True, False]:
         filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        boundary_title_underscore = '_with_boundary' if boundary_extrapolation == 1 else '_without_boundary'
+        interpolation_title= ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
+        interpolation_title_underscore = '_with_cubic_interpolation' if cubic_interpolation == 1 else '_with_linear_interpolation'
         #plot_generic(filtered_df, scan_matchers, process_solver_iterations, 'Solver Iterations', 'Solver Iterations' + interpolation_title + boundary_title)
         plot_generic(filtered_df, scan_matchers, process_reprojection_error, 'Avg. Reprojection Error[m]', 'Reprojection Error' + interpolation_title + boundary_title)
-        #plot_generic(filtered_df, scan_matchers, process_matching_time, 'Avg. Matching time[s]', 'Matching time' + interpolation_title + boundary_title)
-        #plot_generic(filtered_df, scan_matchers, process_map_update_time, 'Map Update time', 'Map Update time' + interpolation_title)
+        tikz_save('gas_station' + '_reprojection_error' + interpolation_title_underscore + boundary_title_underscore + '.tikz')
+        plot_generic(filtered_df, scan_matchers, process_matching_time, 'Avg. Matching time[s]', 'Matching time' + interpolation_title + boundary_title)
+        tikz_save('gas_station' + '_matching_time' + interpolation_title_underscore + boundary_title_underscore + '.tikz')
+        plot_generic(filtered_df, scan_matchers, process_map_update_time, 'Map Update time', 'Map Update time' + interpolation_title)
+        tikz_save('gas_station' + '_map_update_time' + interpolation_title_underscore + boundary_title_underscore + '.tikz')
+
 
 #compute error metrics
 
@@ -182,14 +188,14 @@ for boundary_extrapolation in [True]:
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        interpolation_title = ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
         compute_error_generic(filtered_df, scan_matchers, process_solver_iterations, data_linear)
     for cubic_interpolation in [True]:
         filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        interpolation_title = ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
         compute_error_generic(filtered_df, scan_matchers, process_solver_iterations, data_cubic)
 
     for data_index in range(0, len(scan_matchers)):
@@ -205,14 +211,14 @@ for boundary_extrapolation in [True]:
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        interpolation_title = ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
         compute_error_generic(filtered_df, scan_matchers, process_matching_time, data_linear)
     for cubic_interpolation in [True]:
         filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        interpolation_title = ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
         compute_error_generic(filtered_df, scan_matchers, process_matching_time, data_cubic)
 
     for data_index in range(0, len(scan_matchers)):
@@ -228,20 +234,18 @@ for boundary_extrapolation in [True]:
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        interpolation_title = ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
         compute_error_generic(filtered_df, scan_matchers, process_reprojection_error, data_linear)
     for cubic_interpolation in [True]:
         filtered_df = df[df.boundary_extrapolation == boundary_extrapolation]
         filtered_df = filtered_df[filtered_df.cubic_interpolation == cubic_interpolation]
         batch_size = int((filtered_df.initial_error_x == 0).astype(int).sum() / scan_matchers.size)
         boundary_title = ' with boundary' if boundary_extrapolation == 1 else ' without boundary'
-        interpolation_title = ' with cubic_interpolation' if cubic_interpolation == 1 else ' with linear_interpolation'
+        interpolation_title = ' with cubic interpolation' if cubic_interpolation == 1 else ' with linear interpolation'
         compute_error_generic(filtered_df, scan_matchers, process_reprojection_error, data_cubic)
 
     for data_index in range(0, len(scan_matchers)):
         data_mean_x = ((data_linear[data_index][1]-data_cubic[data_index][1])/data_cubic[data_index][1])[0:11]
         print(scan_matchers[data_index], np.mean(data_mean_x), np.std(data_mean_x))
-
-tikz_save('test.tex')
 
 plt.show()
