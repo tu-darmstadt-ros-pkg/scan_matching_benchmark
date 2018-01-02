@@ -34,7 +34,10 @@
 int main(int argc, char **argv) {
   ros::init(argc, argv, ROS_PACKAGE_NAME);
   ros::NodeHandle nh;
-  BatchScanMatchingBenchmarkFromFile scan_matching_benchmark(nh, "s");
+  std::string benchmark_type;
+  nh.param<std::string>("benchmark_type", benchmark_type, "single");
+  ROS_INFO("Benchmark: %s", benchmark_type.c_str());
+  BatchScanMatchingBenchmark scan_matching_benchmark(nh);//, "scan_matching_benchmark");
   while(ros::ok())
   {
       ros::spin();

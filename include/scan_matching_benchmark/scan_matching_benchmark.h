@@ -12,15 +12,6 @@
 float computeReprojectionError(const cartographer::sensor::PointCloud& scan_cloud,
                                const cartographer::transform::Rigid3d& pose_estimate);
 
-class ScanMatchingBenchmark
-{
-public:
-  ScanMatchingBenchmark(ros::NodeHandle &nh);
-
-private:
-
-};
-
 class BatchScanMatchingBenchmark
 {
 public:
